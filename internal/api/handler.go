@@ -15,14 +15,16 @@ type Handler struct {
 	projectService  *service.ProjectService
 	attendeeService *service.AttendeeService
 	featureService  *service.FeatureService
+	pairwiseService *service.PairwiseService
 }
 
 // NewHandler creates a new API handler
-func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService, featureService *service.FeatureService) *Handler {
+func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService, featureService *service.FeatureService, pairwiseService *service.PairwiseService) *Handler {
 	return &Handler{
 		projectService:  projectService,
 		attendeeService: attendeeService,
 		featureService:  featureService,
+		pairwiseService: pairwiseService,
 	}
 }
 
@@ -50,6 +52,14 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		api.DELETE("/projects/:id/features/:feature_id", h.DeleteFeature)
 		api.POST("/projects/:id/features/import", h.ImportFeatures)
 		api.GET("/projects/:id/features/export", h.ExportFeatures)
+
+		// Pairwise comparison routes
+		api.POST("/projects/:id/pairwise-sessions", h.StartPairwiseSession)
+		api.GET("/projects/:id/pairwise-sessions/:session_id", h.GetPairwiseSession)
+		api.GET("/projects/:id/pairwise-sessions/:session_id/comparisons", h.GetPairwiseSessionComparisons)
+		api.POST("/projects/:id/pairwise-sessions/:session_id/vote", h.SubmitPairwiseVote)
+		api.POST("/projects/:id/pairwise-sessions/:session_id/complete", h.CompletePairwiseSession)
+		api.GET("/projects/:id/pairwise-sessions/:session_id/next-comparison/:attendee_id", h.GetNextComparison)
 	}
 }
 
@@ -194,5 +204,19 @@ func (h *Handler) ListProjects(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"projects": projects,
+	})
+}
+
+// handleServiceError handles service layer errors and sends appropriate HTTP responses
+func handleServiceError(c *gin.Context, err error) {
+	if apiErr, ok := err.(*domain.APIError); ok {
+		c.JSON(apiErr.Code, gin.H{
+			"error":   apiErr.Message,
+			"details": apiErr.Details,
+		})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"error": "Internal server error",
 	})
 }

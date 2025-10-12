@@ -27,14 +27,16 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)
 	attendeeRepo := repository.NewAttendeeRepository(db)
 	featureRepo := repository.NewFeatureRepository(db)
+	pairwiseRepo := repository.NewPairwiseRepository(db)
 
 	// Initialize services
 	projectService := service.NewProjectService(projectRepo)
 	attendeeService := service.NewAttendeeService(attendeeRepo)
 	featureService := service.NewFeatureService(featureRepo, projectRepo)
+	pairwiseService := service.NewPairwiseService(pairwiseRepo, featureRepo, attendeeRepo, projectRepo)
 
 	// Initialize API handlers
-	apiHandler := api.NewHandler(projectService, attendeeService, featureService)
+	apiHandler := api.NewHandler(projectService, attendeeService, featureService, pairwiseService)
 
 	// Set up Gin router
 	router := setupRouter(apiHandler)
