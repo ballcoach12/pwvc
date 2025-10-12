@@ -7,6 +7,7 @@ import FibonacciScoring from './pages/FibonacciScoring.jsx'
 import PairwiseComparison from './pages/PairwiseComparison.jsx'
 import ProjectList from './pages/ProjectList/ProjectList.jsx'
 import ProjectSetup from './pages/ProjectSetup/ProjectSetup.jsx'
+import Results from './pages/Results.jsx'
 
 function App() {
   return (
@@ -22,7 +23,7 @@ function App() {
           <Route path="/projects/:projectId/comparison" element={<PairwiseComparison />} />
           <Route path="/projects/:projectId/scoring/value" element={<FibonacciScoring />} />
           <Route path="/projects/:projectId/scoring/complexity" element={<FibonacciScoring />} />
-          {/* TODO: Add routes for final results and export */}
+          <Route path="/projects/:projectId/results" element={<Results />} />
           <Route path="*" element={<Navigate to="/projects" replace />} />
         </Routes>
       </Layout>

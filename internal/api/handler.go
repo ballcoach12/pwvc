@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"pwvc/internal/domain"
+	"pwvc/internal/repository"
 	"pwvc/internal/service"
 	"pwvc/internal/websocket"
 
@@ -17,7 +18,9 @@ type Handler struct {
 	projectService  *service.ProjectService
 	pairwiseService *service.PairwiseService
 	pwvcService     *service.PWVCService
+	resultsService  *service.ResultsService
 	wsHub           *websocket.Hub
+	priorityRepo    *repository.PriorityRepository
 }
 
 // NewHandler creates a new API handler with the required services
@@ -27,6 +30,8 @@ func NewHandler(
 	projectService *service.ProjectService,
 	pairwiseService *service.PairwiseService,
 	pwvcService *service.PWVCService,
+	resultsService *service.ResultsService,
+	priorityRepo *repository.PriorityRepository,
 	hub *websocket.Hub,
 ) *Handler {
 	return &Handler{
@@ -35,6 +40,8 @@ func NewHandler(
 		projectService:  projectService,
 		pairwiseService: pairwiseService,
 		pwvcService:     pwvcService,
+		resultsService:  resultsService,
+		priorityRepo:    priorityRepo,
 		wsHub:           hub,
 	}
 }
@@ -73,6 +80,14 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 			projects.POST("/:id/pairwise/votes", h.SubmitPairwiseVote)
 			projects.POST("/:id/pairwise/complete", h.CompletePairwiseSession)
 			projects.GET("/:id/pairwise/next", h.GetNextComparison)
+
+			// Results endpoints
+			projects.POST("/:id/calculate-results", h.CalculateResults)
+			projects.GET("/:id/results", h.GetResults)
+			projects.GET("/:id/results/export", h.ExportResults)
+			projects.GET("/:id/results/summary", h.GetResultsSummary)
+			projects.GET("/:id/results/status", h.CheckResultsStatus)
+			projects.GET("/:id/results/preview", h.PreviewExport)
 		}
 
 		// WebSocket endpoint

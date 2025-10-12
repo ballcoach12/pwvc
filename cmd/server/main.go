@@ -29,6 +29,7 @@ func main() {
 	attendeeRepo := repository.NewAttendeeRepository(db)
 	featureRepo := repository.NewFeatureRepository(db)
 	pairwiseRepo := repository.NewPairwiseRepository(db)
+	priorityRepo := repository.NewPriorityRepository(db)
 
 	// Initialize services
 	projectService := service.NewProjectService(projectRepo)
@@ -36,13 +37,14 @@ func main() {
 	featureService := service.NewFeatureService(featureRepo, projectRepo)
 	pairwiseService := service.NewPairwiseService(pairwiseRepo, featureRepo, attendeeRepo, projectRepo)
 	pwvcService := service.NewPWVCService()
+	resultsService := service.NewResultsService(priorityRepo, featureRepo, pairwiseRepo)
 
 	// Initialize WebSocket hub
 	wsHub := websocket.NewHub(attendeeRepo)
 	go wsHub.Run() // Start the hub in a goroutine
 
 	// Initialize API handlers
-	apiHandler := api.NewHandler(attendeeService, featureService, projectService, pairwiseService, pwvcService, wsHub)
+	apiHandler := api.NewHandler(attendeeService, featureService, projectService, pairwiseService, pwvcService, resultsService, priorityRepo, wsHub)
 
 	// Set up Gin router
 	router := setupRouter(apiHandler)
