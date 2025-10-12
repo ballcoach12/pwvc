@@ -14,13 +14,15 @@ import (
 type Handler struct {
 	projectService  *service.ProjectService
 	attendeeService *service.AttendeeService
+	featureService  *service.FeatureService
 }
 
 // NewHandler creates a new API handler
-func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService) *Handler {
+func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService, featureService *service.FeatureService) *Handler {
 	return &Handler{
 		projectService:  projectService,
 		attendeeService: attendeeService,
+		featureService:  featureService,
 	}
 }
 
@@ -39,6 +41,15 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		api.POST("/projects/:id/attendees", h.CreateAttendee)
 		api.GET("/projects/:id/attendees", h.GetProjectAttendees)
 		api.DELETE("/projects/:id/attendees/:attendee_id", h.DeleteAttendee)
+
+		// Feature routes
+		api.POST("/projects/:id/features", h.CreateFeature)
+		api.GET("/projects/:id/features", h.GetProjectFeatures)
+		api.GET("/projects/:id/features/:feature_id", h.GetFeature)
+		api.PUT("/projects/:id/features/:feature_id", h.UpdateFeature)
+		api.DELETE("/projects/:id/features/:feature_id", h.DeleteFeature)
+		api.POST("/projects/:id/features/import", h.ImportFeatures)
+		api.GET("/projects/:id/features/export", h.ExportFeatures)
 	}
 }
 

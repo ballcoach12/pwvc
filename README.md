@@ -88,6 +88,16 @@ The server will start on port 8080 (or the PORT environment variable).
 - `GET /api/projects/{id}/attendees` - List project attendees
 - `DELETE /api/projects/{id}/attendees/{attendee_id}` - Remove attendee
 
+### Features
+
+- `POST /api/projects/{id}/features` - Create new feature
+- `GET /api/projects/{id}/features` - List all features in project
+- `GET /api/projects/{id}/features/{feature_id}` - Get specific feature
+- `PUT /api/projects/{id}/features/{feature_id}` - Update feature
+- `DELETE /api/projects/{id}/features/{feature_id}` - Delete feature
+- `POST /api/projects/{id}/features/import` - Import features from CSV
+- `GET /api/projects/{id}/features/export` - Export features to CSV
+
 ### Health Check
 
 - `GET /health` - Service health check
@@ -118,6 +128,32 @@ curl -X POST http://localhost:8080/api/projects/1/attendees \
   }'
 ```
 
+### Create Feature
+
+```bash
+curl -X POST http://localhost:8080/api/projects/1/features \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "User Authentication",
+    "description": "Implement secure user login and registration functionality",
+    "acceptance_criteria": "Users should be able to login with email/password and receive appropriate error messages for invalid credentials"
+  }'
+```
+
+### Import Features from CSV
+
+```bash
+curl -X POST http://localhost:8080/api/projects/1/features/import \
+  -F "file=@features.csv"
+```
+
+### Export Features to CSV
+
+```bash
+curl -X GET http://localhost:8080/api/projects/1/features/export \
+  -o "project_features.csv"
+```
+
 ## Database Schema
 
 ### Projects Table
@@ -145,6 +181,43 @@ CREATE TABLE attendees (
     created_at TIMESTAMP DEFAULT NOW()
 );
 ```
+
+### Features Table
+
+```sql
+CREATE TABLE features (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    acceptance_criteria TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## CSV Import/Export Format
+
+### CSV Structure for Features
+
+```csv
+title,description,acceptance_criteria
+"User Login","Users can authenticate with email/password","Given valid credentials, user should be logged in successfully"
+"Dashboard View","Display key metrics and navigation","Dashboard loads within 2 seconds and shows current data"
+```
+
+### Validation Rules
+
+- **Title**: Required, maximum 255 characters
+- **Description**: Required, maximum 5000 characters
+- **Acceptance Criteria**: Optional, maximum 5000 characters
+
+### CSV Import Process
+
+1. Upload CSV file via `POST /api/projects/{id}/features/import`
+2. System validates each row according to rules above
+3. Valid features are imported, invalid rows are reported in response
+4. Response includes counts of imported/skipped records and error details
 
 ## Development
 
@@ -203,13 +276,16 @@ This foundation provides:
 - ✅ Basic project and attendee management
 - ✅ PostgreSQL integration with migrations
 - ✅ RESTful API with proper error handling
+- ✅ Feature management with CRUD operations
+- ✅ CSV import/export for bulk feature operations
 - ✅ Clean architecture (domain, service, repository layers)
 - ✅ CORS support for frontend integration
+- ✅ Comprehensive validation and error handling
 
 Future development will add:
 
-- Feature management (for P-WVC methodology)
-- Pairwise comparison engine
+- Pairwise comparison engine (core P-WVC methodology)
 - Fibonacci scoring system
+- Win-count weighting calculations
 - WebSocket real-time collaboration
 - React frontend interface

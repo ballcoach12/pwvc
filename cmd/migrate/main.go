@@ -1,4 +1,3 @@
-package migrate
 package main
 
 import (
