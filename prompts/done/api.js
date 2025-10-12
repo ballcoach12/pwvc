@@ -175,4 +175,160 @@ export const pairwiseService = {
   }
 }
 
+// Fibonacci Scoring Service
+export const fibonacciService = {
+  // Create or get existing Fibonacci scoring session
+  createSession: async (projectId, criterionType) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/fibonacci-sessions`, {
+        criterion_type: criterionType
+      })
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get Fibonacci scoring session
+  getSession: async (projectId, sessionId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get all sessions for a project
+  getSessions: async (projectId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Submit individual Fibonacci score
+  submitScore: async (projectId, sessionId, featureId, attendeeId, score) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/fibonacci-sessions/${sessionId}/scores`, {
+        feature_id: featureId,
+        attendee_id: attendeeId,
+        score_value: score
+      })
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get all scores for a session
+  getSessionScores: async (projectId, sessionId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}/scores`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get scores for a specific feature in a session
+  getFeatureScores: async (projectId, sessionId, featureId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}/features/${featureId}/scores`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Set consensus score for a feature
+  setConsensus: async (projectId, sessionId, featureId, finalScore) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/fibonacci-sessions/${sessionId}/consensus`, {
+        feature_id: featureId,
+        final_score: finalScore
+      })
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get consensus scores for a session
+  getSessionConsensus: async (projectId, sessionId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}/consensus`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Complete a Fibonacci scoring session
+  completeSession: async (projectId, sessionId) => {
+    try {
+      const response = await api.patch(`/projects/${projectId}/fibonacci-sessions/${sessionId}/complete`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Export session results as CSV
+  exportResults: async (projectId, sessionId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}/export`, {
+        responseType: 'text'
+      })
+      return response.data
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get session statistics
+  getSessionStats: async (projectId, sessionId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/${sessionId}/stats`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Reset all scores for a session (admin function)
+  resetSessionScores: async (projectId, sessionId) => {
+    try {
+      const response = await api.delete(`/projects/${projectId}/fibonacci-sessions/${sessionId}/scores`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Delete a scoring session
+  deleteSession: async (projectId, sessionId) => {
+    try {
+      const response = await api.delete(`/projects/${projectId}/fibonacci-sessions/${sessionId}`)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+
+  // Get current active session for a criterion type
+  getActiveSession: async (projectId, criterionType) => {
+    try {
+      const response = await api.get(`/projects/${projectId}/fibonacci-sessions/active`, {
+        params: { criterion_type: criterionType }
+      })
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  }
+}
+
 export default api

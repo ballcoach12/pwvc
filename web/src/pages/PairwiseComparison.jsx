@@ -33,11 +33,11 @@ import {
 } from '@mui/material'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import AttendeeVotingPanel from '../components/AttendeeVotingPanel'
-import ComparisonCard from '../components/ComparisonCard'
+import AttendeeVotingPanel from '../components/AttendeeVotingPanel/AttendeeVotingPanel'
+import ComparisonCard from '../components/ComparisonCard/ComparisonCard'
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog'
 import PairwiseGrid from '../components/PairwiseGrid'
-import SessionProgress from '../components/SessionProgress'
+import SessionProgress from '../components/SessionProgress/SessionProgress'
 import { useAttendees } from '../hooks/useAttendees'
 import { useFeatures } from '../hooks/useFeatures'
 import { usePairwiseShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -366,6 +366,18 @@ const PairwiseComparison = () => {
               >
                 Export
               </Button>
+
+              {completedComparisons === totalComparisons && totalComparisons > 0 && (
+                <Button
+                  variant="contained"
+                  startIcon={<NavigateNext />}
+                  onClick={() => navigate(`/projects/${projectId}/scoring/value`)}
+                  size="small"
+                  color="success"
+                >
+                  Start Value Scoring
+                </Button>
+              )}
             </Box>
           </Toolbar>
         </AppBar>
