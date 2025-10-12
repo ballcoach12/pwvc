@@ -10,6 +10,7 @@ import (
 	"pwvc/internal/api"
 	"pwvc/internal/repository"
 	"pwvc/internal/service"
+	"pwvc/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -35,8 +36,12 @@ func main() {
 	featureService := service.NewFeatureService(featureRepo, projectRepo)
 	pairwiseService := service.NewPairwiseService(pairwiseRepo, featureRepo, attendeeRepo, projectRepo)
 
+	// Initialize WebSocket hub
+	wsHub := websocket.NewHub(attendeeRepo)
+	go wsHub.Run() // Start the hub in a goroutine
+
 	// Initialize API handlers
-	apiHandler := api.NewHandler(projectService, attendeeService, featureService, pairwiseService)
+	apiHandler := api.NewHandler(projectService, attendeeService, featureService, pairwiseService, wsHub)
 
 	// Set up Gin router
 	router := setupRouter(apiHandler)

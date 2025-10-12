@@ -6,6 +6,7 @@ import (
 
 	"pwvc/internal/domain"
 	"pwvc/internal/service"
+	"pwvc/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,15 +17,17 @@ type Handler struct {
 	attendeeService *service.AttendeeService
 	featureService  *service.FeatureService
 	pairwiseService *service.PairwiseService
+	wsHub           *websocket.Hub
 }
 
 // NewHandler creates a new API handler
-func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService, featureService *service.FeatureService, pairwiseService *service.PairwiseService) *Handler {
+func NewHandler(projectService *service.ProjectService, attendeeService *service.AttendeeService, featureService *service.FeatureService, pairwiseService *service.PairwiseService, wsHub *websocket.Hub) *Handler {
 	return &Handler{
 		projectService:  projectService,
 		attendeeService: attendeeService,
 		featureService:  featureService,
 		pairwiseService: pairwiseService,
+		wsHub:           wsHub,
 	}
 }
 
@@ -60,6 +63,9 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		api.POST("/projects/:id/pairwise-sessions/:session_id/vote", h.SubmitPairwiseVote)
 		api.POST("/projects/:id/pairwise-sessions/:session_id/complete", h.CompletePairwiseSession)
 		api.GET("/projects/:id/pairwise-sessions/:session_id/next-comparison/:attendee_id", h.GetNextComparison)
+
+		// WebSocket route
+		api.GET("/projects/:id/pairwise-sessions/:session_id/ws", h.HandleWebSocket)
 	}
 }
 

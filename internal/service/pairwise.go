@@ -5,14 +5,24 @@ import (
 
 	"pwvc/internal/domain"
 	"pwvc/internal/repository"
+	"pwvc/internal/websocket"
 )
+
+// WebSocketBroadcaster defines the interface for WebSocket broadcasting
+type WebSocketBroadcaster interface {
+	NotifyVoteSubmitted(sessionID int, voteUpdate websocket.VoteUpdateMessage)
+	NotifyConsensusReached(sessionID int, consensus websocket.ConsensusReachedMessage)
+	NotifySessionProgress(sessionID int, progress websocket.SessionProgressMessage)
+	NotifySessionCompleted(sessionID int, completion websocket.SessionCompletedMessage)
+}
 
 // PairwiseService handles business logic for pairwise comparisons
 type PairwiseService struct {
-	pairwiseRepo *repository.PairwiseRepository
-	featureRepo  *repository.FeatureRepository
-	attendeeRepo *repository.AttendeeRepository
-	projectRepo  *repository.ProjectRepository
+	pairwiseRepo  *repository.PairwiseRepository
+	featureRepo   *repository.FeatureRepository
+	attendeeRepo  *repository.AttendeeRepository
+	projectRepo   *repository.ProjectRepository
+	wsBroadcaster WebSocketBroadcaster
 }
 
 // NewPairwiseService creates a new pairwise service
@@ -23,11 +33,17 @@ func NewPairwiseService(
 	projectRepo *repository.ProjectRepository,
 ) *PairwiseService {
 	return &PairwiseService{
-		pairwiseRepo: pairwiseRepo,
-		featureRepo:  featureRepo,
-		attendeeRepo: attendeeRepo,
-		projectRepo:  projectRepo,
+		pairwiseRepo:  pairwiseRepo,
+		featureRepo:   featureRepo,
+		attendeeRepo:  attendeeRepo,
+		projectRepo:   projectRepo,
+		wsBroadcaster: nil, // Will be set via SetWebSocketBroadcaster
 	}
+}
+
+// SetWebSocketBroadcaster sets the WebSocket broadcaster for real-time notifications
+func (s *PairwiseService) SetWebSocketBroadcaster(broadcaster WebSocketBroadcaster) {
+	s.wsBroadcaster = broadcaster
 }
 
 // StartPairwiseSession starts a new pairwise comparison session
@@ -256,6 +272,11 @@ func (s *PairwiseService) SubmitVote(sessionID int, req domain.SubmitVoteRequest
 		fmt.Printf("Warning: Failed to check consensus: %v\n", err)
 	}
 
+	// Send WebSocket notification about the vote update
+	if s.wsBroadcaster != nil {
+		go s.notifyVoteUpdate(sessionID, req.ComparisonID, *vote)
+	}
+
 	return vote, nil
 }
 
@@ -273,10 +294,26 @@ func (s *PairwiseService) checkAndUpdateConsensus(sessionID, comparisonID, proje
 		return err
 	}
 
+	// Check if consensus was just reached for this comparison
+	comparison, err := s.pairwiseRepo.GetComparisonByID(comparisonID)
+	if err != nil {
+		return err
+	}
+
+	// If consensus was reached, send notification
+	if comparison.ConsensusReached && s.wsBroadcaster != nil {
+		go s.notifyConsensusReached(sessionID, comparisonID, comparison.WinnerID, comparison.IsTie)
+	}
+
 	// Check if all comparisons in the session have reached consensus
 	progress, err := s.pairwiseRepo.GetSessionProgress(sessionID)
 	if err != nil {
 		return err
+	}
+
+	// Send progress notification
+	if s.wsBroadcaster != nil {
+		go s.notifySessionProgress(sessionID)
 	}
 
 	// If all comparisons are completed, mark session as completed
@@ -284,6 +321,14 @@ func (s *PairwiseService) checkAndUpdateConsensus(sessionID, comparisonID, proje
 		err = s.pairwiseRepo.CompleteSession(sessionID)
 		if err != nil {
 			return err
+		}
+
+		// Send session completion notification
+		if s.wsBroadcaster != nil {
+			session, err := s.pairwiseRepo.GetSessionByID(sessionID)
+			if err == nil {
+				go s.notifySessionCompleted(sessionID, session)
+			}
 		}
 	}
 
@@ -312,6 +357,11 @@ func (s *PairwiseService) CompleteSession(sessionID int) error {
 	err = s.pairwiseRepo.CompleteSession(sessionID)
 	if err != nil {
 		return domain.NewAPIError(500, "Failed to complete session", err.Error())
+	}
+
+	// Send session completion notification
+	if s.wsBroadcaster != nil {
+		go s.notifySessionCompleted(sessionID, session)
 	}
 
 	return nil
@@ -368,4 +418,115 @@ func (s *PairwiseService) GetNextComparison(sessionID, attendeeID int) (*domain.
 
 	// No comparisons found that need this attendee's vote
 	return nil, domain.NewAPIError(404, "No pending comparisons found")
+}
+
+// notifyVoteUpdate sends a WebSocket notification about a vote update
+func (s *PairwiseService) notifyVoteUpdate(sessionID, comparisonID int, vote domain.AttendeeVote) {
+	// Get attendee information
+	attendee, err := s.attendeeRepo.GetByID(vote.AttendeeID)
+	if err != nil {
+		fmt.Printf("Failed to get attendee for vote notification: %v\n", err)
+		return
+	}
+
+	// Get all votes for this comparison to calculate totals
+	votes, err := s.pairwiseRepo.GetVotesByComparisonID(comparisonID)
+	if err != nil {
+		fmt.Printf("Failed to get votes for notification: %v\n", err)
+		return
+	}
+
+	// Get comparison details
+	comparison, err := s.pairwiseRepo.GetComparisonByID(comparisonID)
+	if err != nil {
+		fmt.Printf("Failed to get comparison for notification: %v\n", err)
+		return
+	}
+
+	// Get total attendees for the project
+	attendees, err := s.attendeeRepo.GetByProjectID(attendee.ProjectID)
+	if err != nil {
+		fmt.Printf("Failed to get attendees for notification: %v\n", err)
+		return
+	}
+
+	voteUpdate := websocket.VoteUpdateMessage{
+		ComparisonID:       comparisonID,
+		AttendeeID:         vote.AttendeeID,
+		AttendeeName:       attendee.Name,
+		PreferredFeatureID: vote.PreferredFeatureID,
+		IsTieVote:          vote.IsTieVote,
+		VotesReceived:      len(votes),
+		TotalAttendees:     len(attendees),
+		ConsensusReached:   comparison.ConsensusReached,
+	}
+
+	s.wsBroadcaster.NotifyVoteSubmitted(sessionID, voteUpdate)
+}
+
+// notifyConsensusReached sends a WebSocket notification about consensus
+func (s *PairwiseService) notifyConsensusReached(sessionID, comparisonID int, winnerID *int, isTie bool) {
+	// Get comparison details
+	comparison, err := s.pairwiseRepo.GetComparisonByID(comparisonID)
+	if err != nil {
+		fmt.Printf("Failed to get comparison for consensus notification: %v\n", err)
+		return
+	}
+
+	consensusMsg := websocket.ConsensusReachedMessage{
+		ComparisonID: comparisonID,
+		WinnerID:     winnerID,
+		IsTie:        isTie,
+	}
+
+	// Add feature names if available
+	if comparison.FeatureA != nil {
+		consensusMsg.FeatureAName = comparison.FeatureA.Title
+	}
+	if comparison.FeatureB != nil {
+		consensusMsg.FeatureBName = comparison.FeatureB.Title
+	}
+	if comparison.Winner != nil {
+		consensusMsg.WinnerName = comparison.Winner.Title
+	}
+
+	s.wsBroadcaster.NotifyConsensusReached(sessionID, consensusMsg)
+}
+
+// notifySessionProgress sends a WebSocket notification about session progress
+func (s *PairwiseService) notifySessionProgress(sessionID int) {
+	progress, err := s.pairwiseRepo.GetSessionProgress(sessionID)
+	if err != nil {
+		fmt.Printf("Failed to get session progress for notification: %v\n", err)
+		return
+	}
+
+	progressMsg := websocket.SessionProgressMessage{
+		SessionID:            progress.SessionID,
+		CompletedComparisons: progress.CompletedComparisons,
+		TotalComparisons:     progress.TotalComparisons,
+		ProgressPercentage:   progress.ProgressPercentage,
+		RemainingComparisons: progress.RemainingComparisons,
+	}
+
+	s.wsBroadcaster.NotifySessionProgress(sessionID, progressMsg)
+}
+
+// notifySessionCompleted sends a WebSocket notification about session completion
+func (s *PairwiseService) notifySessionCompleted(sessionID int, session *domain.PairwiseSession) {
+	// Get session statistics
+	progress, err := s.pairwiseRepo.GetSessionProgress(sessionID)
+	if err != nil {
+		fmt.Printf("Failed to get session progress for completion notification: %v\n", err)
+		return
+	}
+
+	completionMsg := websocket.SessionCompletedMessage{
+		SessionID:      sessionID,
+		CriterionType:  string(session.CriterionType),
+		TotalVotes:     0, // TODO: Calculate total votes
+		TotalConsensus: progress.CompletedComparisons,
+	}
+
+	s.wsBroadcaster.NotifySessionCompleted(sessionID, completionMsg)
 }
