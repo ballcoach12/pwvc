@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# P-WVC Development Scripts
+# This file provides easy access to common development commands
+
+case "$1" in
+    "setup")
+        echo "🏗️ Setting up P-WVC development environment..."
+        
+        # Initialize Go module if not exists
+        if [ ! -f "go.mod" ]; then
+            go mod init pwvc
+        fi
+        
+        # Create basic project structure (if needed)
+        mkdir -p {cmd/server,internal/{api,domain,repository,service,websocket},pkg,migrations,web/src}
+        
+        echo "✅ P-WVC project structure created!"
+        ;;
+    
+    "run")
+        echo "🚀 Starting P-WVC application..."
+        go run ./cmd/server
+        ;;
+    
+    "test")
+        echo "🧪 Running P-WVC tests..."
+        go test -v ./...
+        ;;
+    
+    "build")
+        echo "📦 Building P-WVC application..."
+        go build -o pwvc ./cmd/server
+        ;;
+    
+    "dev")
+        echo "🔄 Starting P-WVC in development mode..."
+        go run ./cmd/server
+        ;;
+    
+    "db-start")
+        echo "🗄️ Starting PostgreSQL database..."
+        docker run --name pwvc-postgres \
+            -e POSTGRES_PASSWORD=password \
+            -e POSTGRES_DB=pwvc \
+            -e POSTGRES_USER=pwvc \
+            -p 5432:5432 \
+            -d postgres:15-alpine
+        
+        echo "⏳ Waiting for database to start..."
+        sleep 5
+        
+        while ! docker exec pwvc-postgres pg_isready -U pwvc 2>/dev/null; do
+            echo "Waiting for database connection..."
+            sleep 2
+        done
+        
+        echo "✅ Database is ready!"
+        echo "📍 Connection string: postgres://pwvc:password@localhost:5432/pwvc?sslmode=disable"
+        ;;
+    
+    "db-stop")
+        echo "🛑 Stopping PostgreSQL database..."
+        docker stop pwvc-postgres && docker rm pwvc-postgres
+        ;;
+    
+    "db-logs")
+        echo "📄 Database logs:"
+        docker logs pwvc-postgres
+        ;;
+    
+    "help"|*)
+        echo "P-WVC Development Commands:"
+        echo ""
+        echo "  ./pwvc setup     - Initialize project structure"
+        echo "  ./pwvc run       - Run the application"
+        echo "  ./pwvc test      - Run tests"
+        echo "  ./pwvc build     - Build executable"
+        echo "  ./pwvc dev       - Development mode"
+        echo "  ./pwvc db-start  - Start PostgreSQL database"
+        echo "  ./pwvc db-stop   - Stop database"
+        echo "  ./pwvc db-logs   - View database logs"
+        echo "  ./pwvc help      - Show this help"
+        echo ""
+        echo "Example: ./pwvc run"
+        ;;
+esac
