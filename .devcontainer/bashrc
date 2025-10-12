@@ -1,0 +1,60 @@
+# Custom bashrc for P-WVC Development
+
+# Source the default bashrc if it exists
+if [ -f /etc/bash.bashrc ]; then
+    . /etc/bash.bashrc
+fi
+
+# Enable bash completion
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+
+# Set a colorful prompt
+export PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# Enable color support for ls and grep
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# Set history options
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend
+shopt -s checkwinsize
+
+# Make less more friendly for non-text input files
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Set Go environment variables
+export GOPATH=/go
+export GOROOT=/usr/local/go
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin:$HOME/go/bin
+
+# Node.js environment
+export NODE_OPTIONS="--max-old-space-size=4096"
+
+# Development environment variables for P-WVC
+export DATABASE_URL="postgres://pwvc:password@localhost:5432/pwvc?sslmode=disable"
+export PORT=8080
+export GIN_MODE=debug
+
+# Welcome message
+echo "🚀 P-WVC Development Environment Ready!"
+echo "📍 Working directory: $(pwd)"
+echo "🐹 Go version: $(go version | cut -d' ' -f3-4)"
+echo "📦 Node version: $(node --version)"
+echo ""
+echo "💡 Type 'pwvc-setup' to initialize the project structure"
+echo "💡 Type './setup-db.sh' to start the development database"
+echo ""

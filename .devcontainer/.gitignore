@@ -1,0 +1,16 @@
+# Development Container - Ignore
+
+# VS Code files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# Container-specific files  
+.devcontainer/.env
+.devcontainer/docker-compose.override.yml
+
+# Temporary development files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
