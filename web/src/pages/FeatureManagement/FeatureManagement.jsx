@@ -168,8 +168,7 @@ const FeatureManagement = () => {
       enqueueSnackbar('Please add at least 2 features before continuing', { variant: 'warning' })
       return
     }
-    // TODO: Navigate to pairwise comparison
-    enqueueSnackbar('Pairwise comparison coming soon!', { variant: 'info' })
+    navigate(`/projects/${id}/comparison`)
   }
 
   const cancelEdit = () => {
