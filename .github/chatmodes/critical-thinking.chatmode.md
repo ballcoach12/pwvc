@@ -11,6 +11,7 @@ tools:
     "search",
     "searchResults",
     "usages",
+    "vscodeAPI",
   ]
 ---
 
