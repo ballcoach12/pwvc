@@ -323,6 +323,7 @@ export const api = {
   attendees: {
     getByProject: (projectId) => apiClient.get(`/projects/${projectId}/attendees`),
     create: (projectId, data) => apiClient.post(`/projects/${projectId}/attendees`, data),
+    login: (projectId, attendeeId, pin) => apiClient.post(`/projects/${projectId}/attendees/login`, { attendee_id: attendeeId, pin }),
     delete: (projectId, attendeeId) => apiClient.delete(`/projects/${projectId}/attendees/${attendeeId}`)
   },
 
@@ -375,7 +376,31 @@ export const api = {
   },
 
   // System
-  health: () => apiClient.healthCheck()
+  health: () => apiClient.healthCheck(),
+
+  // Authentication
+  auth: {
+    login: (projectId, attendeeId, pin) => api.attendees.login(projectId, attendeeId, pin),
+    logout: () => {
+      // Clear authentication from storage
+      sessionStorage.removeItem('pairwise_auth_token')
+      sessionStorage.removeItem('pairwise_current_attendee')
+    },
+    getCurrentAttendee: () => {
+      try {
+        const attendeeJson = sessionStorage.getItem('pairwise_current_attendee')
+        return attendeeJson ? JSON.parse(attendeeJson) : null
+      } catch {
+        return null
+      }
+    },
+    setCurrentAttendee: (attendee, token) => {
+      sessionStorage.setItem('pairwise_current_attendee', JSON.stringify(attendee))
+      sessionStorage.setItem('pairwise_auth_token', token)
+    },
+    getToken: () => sessionStorage.getItem('pairwise_auth_token'),
+    isAuthenticated: () => !!sessionStorage.getItem('pairwise_auth_token')
+  }
 }
 
 // Helper function to handle API responses

@@ -66,6 +66,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 			// Attendee endpoints
 			projects.GET("/:id/attendees", h.GetProjectAttendees)
 			projects.POST("/:id/attendees", h.CreateAttendee)
+			projects.POST("/:id/attendees/login", h.LoginAttendee)
 			projects.DELETE("/:id/attendees/:attendeeId", h.DeleteAttendee)
 
 			// Feature endpoints

@@ -42,7 +42,8 @@ import { useAttendees } from '../hooks/useAttendees'
 import { useFeatures } from '../hooks/useFeatures'
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts'
 import { useProject } from '../hooks/useProject'
-import { pairwiseService } from '../services/api'
+import { pairwiseService, api } from '../services/api'
+import AttendeeLoginDialog from '../components/AttendeeLoginDialog/AttendeeLoginDialog'
 import pairwiseWebSocketService, { useWebSocket } from '../services/websocketService'
 
 /**
@@ -94,19 +95,47 @@ const PairwiseComparison = () => {
     leaveSession
   } = useWebSocket(projectId)
 
+  // Authentication state
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false)
+
   // Debug logging for attendee selection
   useEffect(() => {
     console.log('Current attendee state:', currentAttendee)
     console.log('Available attendees:', attendees)
   }, [currentAttendee, attendees])
 
-  // Auto-select first attendee if none is selected and attendees are available
+  // Check for authenticated attendee on mount
   useEffect(() => {
-    if (!currentAttendee && attendees && attendees.length > 0) {
-      console.log('Auto-selecting first attendee:', attendees[0])
-      setCurrentAttendee(attendees[0])
+    const authenticatedAttendee = api.auth.getCurrentAttendee()
+    if (authenticatedAttendee) {
+      console.log('Found authenticated attendee:', authenticatedAttendee)
+      setCurrentAttendee(authenticatedAttendee)
+    } else {
+      // Show login dialog if attendees are available but none is authenticated
+      if (attendees && attendees.length > 0 && !currentAttendee) {
+        console.log('No authenticated attendee, showing login dialog')
+        setLoginDialogOpen(true)
+      }
     }
   }, [attendees, currentAttendee])
+
+  // Handle attendee login
+  const handleAttendeeLogin = async (attendeeId, pin) => {
+    try {
+      const response = await api.auth.login(projectId, attendeeId, pin)
+      console.log('Login successful:', response)
+      
+      // Store authentication
+      api.auth.setCurrentAttendee(response.attendee, response.token)
+      setCurrentAttendee(response.attendee)
+      setLoginDialogOpen(false)
+      
+      showNotification(`Welcome, ${response.attendee.name}!`, 'success')
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw error // Re-throw for the dialog to handle
+    }
+  }
 
   // WebSocket event listeners
   useEffect(() => {
@@ -579,13 +608,22 @@ const PairwiseComparison = () => {
                         comparisonId,
                         choice,
                         currentAttendee,
-                        hasCurrentAttendee: !!currentAttendee
+                        hasCurrentAttendee: !!currentAttendee,
+                        isAuthenticated: api.auth.isAuthenticated()
                       })
+                      
+                      // Verify authentication
+                      if (!api.auth.isAuthenticated()) {
+                        console.error('Not authenticated - showing login dialog')
+                        setLoginDialogOpen(true)
+                        return
+                      }
                       
                       if (currentAttendee) {
                         handleVote(comparisonId, choice, currentAttendee.id)
                       } else {
                         console.error('No attendee selected - cannot vote')
+                        setLoginDialogOpen(true)
                       }
                     }}
                   />
@@ -655,6 +693,15 @@ const PairwiseComparison = () => {
       <KeyboardShortcutsDialog
         open={shortcutsDialogOpen}
         onClose={() => setShortcutsDialogOpen(false)}
+      />
+
+      {/* Attendee Login Dialog */}
+      <AttendeeLoginDialog
+        open={loginDialogOpen}
+        onClose={() => setLoginDialogOpen(false)}
+        onLogin={handleAttendeeLogin}
+        attendees={attendees || []}
+        loading={attendeesLoading}
       />
 
       {/* Notifications */}

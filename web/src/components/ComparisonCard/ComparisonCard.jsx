@@ -1,21 +1,21 @@
 import {
-    Balance,
-    CheckCircle,
-    ExpandLess,
-    ExpandMore
+  Balance,
+  CheckCircle,
+  ExpandLess,
+  ExpandMore
 } from '@mui/icons-material'
 import {
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Collapse,
-    IconButton,
-    LinearProgress,
-    Tooltip,
-    Typography
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Collapse,
+  IconButton,
+  LinearProgress,
+  Tooltip,
+  Typography
 } from '@mui/material'
 import { useState } from 'react'
 
