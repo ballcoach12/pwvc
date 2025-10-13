@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // FeatureRepository handles database operations for features
@@ -20,7 +20,7 @@ func NewFeatureRepository(db *sql.DB) *FeatureRepository {
 func (r *FeatureRepository) Create(projectID int, req domain.CreateFeatureRequest) (*domain.Feature, error) {
 	query := `
 		INSERT INTO features (project_id, title, description, acceptance_criteria, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
 		RETURNING id, project_id, title, description, acceptance_criteria, created_at, updated_at
 	`
 
@@ -47,7 +47,7 @@ func (r *FeatureRepository) GetByID(id int) (*domain.Feature, error) {
 	query := `
 		SELECT id, project_id, title, description, acceptance_criteria, created_at, updated_at
 		FROM features
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var feature domain.Feature
@@ -76,7 +76,7 @@ func (r *FeatureRepository) GetByProjectID(projectID int) ([]domain.Feature, err
 	query := `
 		SELECT id, project_id, title, description, acceptance_criteria, created_at, updated_at
 		FROM features
-		WHERE project_id = $1
+		WHERE project_id = ?
 		ORDER BY created_at ASC
 	`
 
@@ -111,8 +111,8 @@ func (r *FeatureRepository) GetByProjectID(projectID int) ([]domain.Feature, err
 func (r *FeatureRepository) Update(id int, req domain.UpdateFeatureRequest) (*domain.Feature, error) {
 	query := `
 		UPDATE features 
-		SET title = $2, description = $3, acceptance_criteria = $4, updated_at = NOW()
-		WHERE id = $1
+		SET title = ?, description = ?, acceptance_criteria = ?, updated_at = datetime('now')
+		WHERE id = ?
 		RETURNING id, project_id, title, description, acceptance_criteria, created_at, updated_at
 	`
 
@@ -139,7 +139,7 @@ func (r *FeatureRepository) Update(id int, req domain.UpdateFeatureRequest) (*do
 
 // Delete deletes a feature
 func (r *FeatureRepository) Delete(id int) error {
-	query := `DELETE FROM features WHERE id = $1`
+	query := `DELETE FROM features WHERE id = ?`
 
 	result, err := r.db.Exec(query, id)
 	if err != nil {
@@ -160,7 +160,7 @@ func (r *FeatureRepository) Delete(id int) error {
 
 // DeleteByProjectID deletes all features for a project
 func (r *FeatureRepository) DeleteByProjectID(projectID int) error {
-	query := `DELETE FROM features WHERE project_id = $1`
+	query := `DELETE FROM features WHERE project_id = ?`
 	_, err := r.db.Exec(query, projectID)
 	return err
 }
@@ -179,7 +179,7 @@ func (r *FeatureRepository) CreateBatch(projectID int, features []domain.CreateF
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO features (project_id, title, description, acceptance_criteria, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
 		RETURNING id, project_id, title, description, acceptance_criteria, created_at, updated_at
 	`)
 	if err != nil {

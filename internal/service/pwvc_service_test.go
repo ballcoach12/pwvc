@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 func TestPWVCService_ValidateFibonacciScores(t *testing.T) {

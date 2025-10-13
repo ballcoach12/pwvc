@@ -92,7 +92,7 @@ const ProjectList = () => {
             Projects
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage your P-WVC feature prioritization projects
+            Manage your PairWise feature prioritization projects
           </Typography>
         </Box>
         
@@ -127,7 +127,7 @@ const ProjectList = () => {
             No projects yet
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Create your first P-WVC project to get started with feature prioritization
+            Create your first PairWise project to get started with feature prioritization
           </Typography>
           <Button
             variant="contained"

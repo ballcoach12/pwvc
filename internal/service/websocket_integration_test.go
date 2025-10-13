@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"pwvc/internal/websocket"
+	"pairwise/internal/websocket"
 )
 
 // MockWebSocketBroadcaster implements WebSocketBroadcaster for testing

@@ -1,6 +1,6 @@
 import React from 'react'
 
-class PWVCWebSocketService {
+class PairWiseWebSocketService {
   constructor() {
     this.ws = null
     this.projectId = null
@@ -296,7 +296,7 @@ class PWVCWebSocketService {
 }
 
 // Create singleton instance
-const pwvcWebSocketService = new PWVCWebSocketService()
+const pairwiseWebSocketService = new PairWiseWebSocketService()
 
 // React hook for pairwise comparison WebSocket
 export const usePairwiseWebSocket = (projectId, sessionId, attendeeId) => {
@@ -342,15 +342,15 @@ export const usePairwiseWebSocket = (projectId, sessionId, attendeeId) => {
     }
 
     // Register listeners
-    pwvcWebSocketService.on('connected', handleConnected)
-    pwvcWebSocketService.on('disconnected', handleDisconnected)
-    pwvcWebSocketService.on('error', handleError)
-    pwvcWebSocketService.on('voteUpdate', handleVoteUpdate)
-    pwvcWebSocketService.on('consensusReached', handleConsensusReached)
+    pairwiseWebSocketService.on('connected', handleConnected)
+    pairwiseWebSocketService.on('disconnected', handleDisconnected)
+    pairwiseWebSocketService.on('error', handleError)
+    pairwiseWebSocketService.on('voteUpdate', handleVoteUpdate)
+    pairwiseWebSocketService.on('consensusReached', handleConsensusReached)
 
     // Connect
     setConnectionState('connecting')
-    pwvcWebSocketService.connect(projectId, sessionId, attendeeId, 'pairwise')
+    pairwiseWebSocketService.connect(projectId, sessionId, attendeeId, 'pairwise')
       .catch(error => {
         setError(error)
         setConnectionState('error')
@@ -358,18 +358,18 @@ export const usePairwiseWebSocket = (projectId, sessionId, attendeeId) => {
 
     // Heartbeat interval
     const heartbeatInterval = setInterval(() => {
-      pwvcWebSocketService.sendHeartbeat()
+      pairwiseWebSocketService.sendHeartbeat()
     }, 30000) // Every 30 seconds
 
     // Cleanup
     return () => {
       clearInterval(heartbeatInterval)
-      pwvcWebSocketService.off('connected', handleConnected)
-      pwvcWebSocketService.off('disconnected', handleDisconnected)
-      pwvcWebSocketService.off('error', handleError)
-      pwvcWebSocketService.off('voteUpdate', handleVoteUpdate)
-      pwvcWebSocketService.off('consensusReached', handleConsensusReached)
-      pwvcWebSocketService.disconnect()
+      pairwiseWebSocketService.off('connected', handleConnected)
+      pairwiseWebSocketService.off('disconnected', handleDisconnected)
+      pairwiseWebSocketService.off('error', handleError)
+      pairwiseWebSocketService.off('voteUpdate', handleVoteUpdate)
+      pairwiseWebSocketService.off('consensusReached', handleConsensusReached)
+      pairwiseWebSocketService.disconnect()
     }
   }, [projectId, sessionId, attendeeId])
 
@@ -378,10 +378,10 @@ export const usePairwiseWebSocket = (projectId, sessionId, attendeeId) => {
     error,
     votes,
     consensus,
-    service: pwvcWebSocketService,
+    service: pairwiseWebSocketService,
     isConnected: connectionState === 'connected',
-    sendVote: (comparisonId, choice) => pwvcWebSocketService.sendVote(comparisonId, choice),
-    requestSync: () => pwvcWebSocketService.requestSync()
+    sendVote: (comparisonId, choice) => pairwiseWebSocketService.sendVote(comparisonId, choice),
+    requestSync: () => pairwiseWebSocketService.requestSync()
   }
 }
 
@@ -429,15 +429,15 @@ export const useFibonacciWebSocket = (projectId, sessionId, attendeeId) => {
     }
 
     // Register listeners
-    pwvcWebSocketService.on('connected', handleConnected)
-    pwvcWebSocketService.on('disconnected', handleDisconnected)
-    pwvcWebSocketService.on('error', handleError)
-    pwvcWebSocketService.on('fibonacciScoreUpdate', handleFibonacciScoreUpdate)
-    pwvcWebSocketService.on('fibonacciConsensusReached', handleFibonacciConsensusReached)
+    pairwiseWebSocketService.on('connected', handleConnected)
+    pairwiseWebSocketService.on('disconnected', handleDisconnected)
+    pairwiseWebSocketService.on('error', handleError)
+    pairwiseWebSocketService.on('fibonacciScoreUpdate', handleFibonacciScoreUpdate)
+    pairwiseWebSocketService.on('fibonacciConsensusReached', handleFibonacciConsensusReached)
 
     // Connect
     setConnectionState('connecting')
-    pwvcWebSocketService.connect(projectId, sessionId, attendeeId, 'fibonacci')
+    pairwiseWebSocketService.connect(projectId, sessionId, attendeeId, 'fibonacci')
       .catch(error => {
         setError(error)
         setConnectionState('error')
@@ -445,18 +445,18 @@ export const useFibonacciWebSocket = (projectId, sessionId, attendeeId) => {
 
     // Heartbeat interval
     const heartbeatInterval = setInterval(() => {
-      pwvcWebSocketService.sendHeartbeat()
+      pairwiseWebSocketService.sendHeartbeat()
     }, 30000) // Every 30 seconds
 
     // Cleanup
     return () => {
       clearInterval(heartbeatInterval)
-      pwvcWebSocketService.off('connected', handleConnected)
-      pwvcWebSocketService.off('disconnected', handleDisconnected)
-      pwvcWebSocketService.off('error', handleError)
-      pwvcWebSocketService.off('fibonacciScoreUpdate', handleFibonacciScoreUpdate)
-      pwvcWebSocketService.off('fibonacciConsensusReached', handleFibonacciConsensusReached)
-      pwvcWebSocketService.disconnect()
+      pairwiseWebSocketService.off('connected', handleConnected)
+      pairwiseWebSocketService.off('disconnected', handleDisconnected)
+      pairwiseWebSocketService.off('error', handleError)
+      pairwiseWebSocketService.off('fibonacciScoreUpdate', handleFibonacciScoreUpdate)
+      pairwiseWebSocketService.off('fibonacciConsensusReached', handleFibonacciConsensusReached)
+      pairwiseWebSocketService.disconnect()
     }
   }, [projectId, sessionId, attendeeId])
 
@@ -465,24 +465,24 @@ export const useFibonacciWebSocket = (projectId, sessionId, attendeeId) => {
     error,
     fibonacciScores,
     fibonacciConsensus,
-    service: pwvcWebSocketService,
+    service: pairwiseWebSocketService,
     isConnected: connectionState === 'connected',
-    sendScore: (sessionId, featureId, score) => pwvcWebSocketService.sendFibonacciScore(sessionId, featureId, score),
-    sendConsensus: (sessionId, featureId, consensusScore) => pwvcWebSocketService.sendFibonacciConsensus(sessionId, featureId, consensusScore),
-    requestSync: () => pwvcWebSocketService.requestSync()
+    sendScore: (sessionId, featureId, score) => pairwiseWebSocketService.sendFibonacciScore(sessionId, featureId, score),
+    sendConsensus: (sessionId, featureId, consensusScore) => pairwiseWebSocketService.sendFibonacciConsensus(sessionId, featureId, consensusScore),
+    requestSync: () => pairwiseWebSocketService.requestSync()
   }
 }
 
 // Generic WebSocket hook (backwards compatibility)
 export const useWebSocket = (projectId) => {
   return {
-    isConnected: pwvcWebSocketService.isConnected(),
-    service: pwvcWebSocketService,
-    joinSession: (sessionId) => pwvcWebSocketService.connect(projectId, sessionId, null, 'pairwise'),
-    leaveSession: () => pwvcWebSocketService.disconnect(),
-    sendVote: (comparisonId, choice, attendeeId) => pwvcWebSocketService.sendVote(comparisonId, choice),
-    sendScore: (sessionId, featureId, attendeeId, score) => pwvcWebSocketService.sendFibonacciScore(sessionId, featureId, score)
+    isConnected: pairwiseWebSocketService.isConnected(),
+    service: pairwiseWebSocketService,
+    joinSession: (sessionId) => pairwiseWebSocketService.connect(projectId, sessionId, null, 'pairwise'),
+    leaveSession: () => pairwiseWebSocketService.disconnect(),
+    sendVote: (comparisonId, choice, attendeeId) => pairwiseWebSocketService.sendVote(comparisonId, choice),
+    sendScore: (sessionId, featureId, attendeeId, score) => pairwiseWebSocketService.sendFibonacciScore(sessionId, featureId, score)
   }
 }
 
-export default pwvcWebSocketService
+export default pairwiseWebSocketService

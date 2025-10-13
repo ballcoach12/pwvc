@@ -1,10 +1,10 @@
-# P-WVC Web Frontend
+# PairWise Web Frontend
 
-React-based frontend for the P-WVC (Pairwise-Weighted Value/Complexity) feature prioritization application.
+React-based frontend for the PairWise feature prioritization application.
 
 ## Features
 
-- **Project Management**: Create and manage P-WVC projects
+- **Project Management**: Create and manage PairWise projects
 - **Attendee Management**: Add team members and assign facilitator roles
 - **Feature Management**: Add features manually or import from CSV
 - **Material-UI Design**: Modern, responsive interface
@@ -181,7 +181,7 @@ Create a `.env` file for environment-specific configuration:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
-VITE_APP_TITLE=P-WVC
+VITE_APP_TITLE=PairWise
 ```
 
 ## Building for Production

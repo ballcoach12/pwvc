@@ -1,19 +1,19 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
-	"pwvc/internal/api"
-	"pwvc/internal/repository"
-	"pwvc/internal/service"
-	"pwvc/internal/websocket"
+	"pairwise/internal/api"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
+	"pairwise/internal/service"
+	"pairwise/internal/websocket"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -22,29 +22,37 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+
+	// Get underlying SQL DB for repositories that need it
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get SQL DB: %v", err)
+	}
+	defer sqlDB.Close()
 
 	// Initialize repositories
-	projectRepo := repository.NewProjectRepository(db)
-	attendeeRepo := repository.NewAttendeeRepository(db)
-	featureRepo := repository.NewFeatureRepository(db)
-	pairwiseRepo := repository.NewPairwiseRepository(db)
-	priorityRepo := repository.NewPriorityRepository(db)
+	projectRepo := repository.NewProjectRepository(sqlDB)
+	attendeeRepo := repository.NewAttendeeRepository(sqlDB)
+	featureRepo := repository.NewFeatureRepository(sqlDB)
+	pairwiseRepo := repository.NewPairwiseRepository(sqlDB)
+	priorityRepo := repository.NewPriorityRepository(sqlDB)
+	progressRepo := repository.NewProgressRepository(sqlDB)
 
 	// Initialize services
 	projectService := service.NewProjectService(projectRepo)
 	attendeeService := service.NewAttendeeService(attendeeRepo)
 	featureService := service.NewFeatureService(featureRepo, projectRepo)
 	pairwiseService := service.NewPairwiseService(pairwiseRepo, featureRepo, attendeeRepo, projectRepo)
-	pwvcService := service.NewPWVCService()
+	pairwiseCalcService := service.NewPWVCService()
 	resultsService := service.NewResultsService(priorityRepo, featureRepo, pairwiseRepo)
+	progressService := service.NewProgressService(progressRepo, projectRepo, attendeeRepo, featureRepo)
 
 	// Initialize WebSocket hub
 	wsHub := websocket.NewHub(attendeeRepo)
 	go wsHub.Run() // Start the hub in a goroutine
 
 	// Initialize API handlers
-	apiHandler := api.NewHandler(attendeeService, featureService, projectService, pairwiseService, pwvcService, resultsService, priorityRepo, wsHub)
+	apiHandler := api.NewHandler(attendeeService, featureService, projectService, pairwiseService, pairwiseCalcService, resultsService, progressService, priorityRepo, wsHub)
 
 	// Set up Gin router
 	router := setupRouter(apiHandler)
@@ -55,7 +63,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("P-WVC Server starting on port %s", port)
+	log.Printf("PairWise Server starting on port %s", port)
 	log.Printf("Health check available at: http://localhost:%s/health", port)
 
 	if err := router.Run(":" + port); err != nil {
@@ -63,28 +71,33 @@ func main() {
 	}
 }
 
-func initDB() (*sql.DB, error) {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://postgres:password@localhost:5432/pwvc?sslmode=disable"
+func initDB() (*gorm.DB, error) {
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		dbPath = "pairwise.db"
 	}
 
-	db, err := sql.Open("postgres", dbURL)
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	// Test the connection
-	if err := db.Ping(); err != nil {
+	// Auto-migrate all models
+	err = db.AutoMigrate(
+		&domain.Project{},
+		&domain.Attendee{},
+		&domain.Feature{},
+		&domain.PairwiseSession{},
+		&domain.SessionComparison{},
+		&domain.AttendeeVote{},
+		&domain.PriorityCalculation{},
+		&domain.ProjectProgress{},
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	log.Println("Successfully connected to PostgreSQL database")
+	log.Println("Successfully connected to SQLite database")
 	return db, nil
 }
 
@@ -96,23 +109,22 @@ func setupRouter(apiHandler *api.Handler) *gin.Engine {
 
 	router := gin.New()
 
-	// Add middleware
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-	router.Use(corsMiddleware())
+	// Initialize logger
+	logger := api.NewLogger()
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"service": "pwvc",
-		})
-	})
+	// Add middleware
+	router.Use(logger.LoggingMiddleware())  // Use structured logging
+	router.Use(api.RecoveryMiddleware())    // Use custom recovery middleware
+	router.Use(api.RequestIDMiddleware())   // Add request ID tracking
+	router.Use(api.PerformanceMiddleware()) // Add performance monitoring
+	router.Use(corsMiddleware())
+	router.Use(api.ValidationMiddleware()) // Add validation middleware
+	router.Use(api.RateLimitMiddleware())  // Add basic rate limiting
 
 	// Root endpoint
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "P-WVC (Pairwise-Weighted Value/Complexity) Model API",
+			"message": "PairWise - Feature Prioritization Through Group Consensus",
 			"version": "0.1.0",
 		})
 	})

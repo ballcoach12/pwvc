@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // PairwiseRepository handles database operations for pairwise comparisons
@@ -20,7 +20,7 @@ func NewPairwiseRepository(db *sql.DB) *PairwiseRepository {
 func (r *PairwiseRepository) CreateSession(projectID int, criterionType domain.CriterionType) (*domain.PairwiseSession, error) {
 	query := `
 		INSERT INTO pairwise_sessions (project_id, criterion_type, status, started_at)
-		VALUES ($1, $2, $3, NOW())
+		VALUES (?, ?, ?, datetime('now'))
 		RETURNING id, project_id, criterion_type, status, started_at, completed_at
 	`
 
@@ -46,7 +46,7 @@ func (r *PairwiseRepository) GetSessionByID(sessionID int) (*domain.PairwiseSess
 	query := `
 		SELECT id, project_id, criterion_type, status, started_at, completed_at
 		FROM pairwise_sessions
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var session domain.PairwiseSession
@@ -71,7 +71,7 @@ func (r *PairwiseRepository) GetActiveSessionByProjectAndCriterion(projectID int
 	query := `
 		SELECT id, project_id, criterion_type, status, started_at, completed_at
 		FROM pairwise_sessions
-		WHERE project_id = $1 AND criterion_type = $2 AND status = $3
+		WHERE project_id = ? AND criterion_type = ? AND status = ?
 		ORDER BY started_at DESC
 		LIMIT 1
 	`
@@ -97,8 +97,8 @@ func (r *PairwiseRepository) GetActiveSessionByProjectAndCriterion(projectID int
 func (r *PairwiseRepository) CompleteSession(sessionID int) error {
 	query := `
 		UPDATE pairwise_sessions
-		SET status = $1, completed_at = NOW()
-		WHERE id = $2
+		SET status = ?, completed_at = datetime('now')
+		WHERE id = ?
 	`
 
 	_, err := r.db.Exec(query, domain.SessionStatusCompleted, sessionID)
@@ -109,7 +109,7 @@ func (r *PairwiseRepository) CompleteSession(sessionID int) error {
 func (r *PairwiseRepository) CreateComparison(sessionID, featureAID, featureBID int) (*domain.SessionComparison, error) {
 	query := `
 		INSERT INTO pairwise_comparisons (session_id, feature_a_id, feature_b_id, created_at)
-		VALUES ($1, $2, $3, NOW())
+		VALUES (?, ?, ?, datetime('now'))
 		RETURNING id, session_id, feature_a_id, feature_b_id, winner_id, is_tie, consensus_reached, created_at
 	`
 
@@ -142,7 +142,7 @@ func (r *PairwiseRepository) GetComparisonsBySessionID(sessionID int) ([]domain.
 		FROM pairwise_comparisons pc
 		JOIN features fa ON pc.feature_a_id = fa.id
 		JOIN features fb ON pc.feature_b_id = fb.id
-		WHERE pc.session_id = $1
+		WHERE pc.session_id = ?
 		ORDER BY pc.created_at ASC
 	`
 
@@ -195,7 +195,7 @@ func (r *PairwiseRepository) GetComparisonByID(comparisonID int) (*domain.Sessio
 		FROM pairwise_comparisons pc
 		JOIN features fa ON pc.feature_a_id = fa.id
 		JOIN features fb ON pc.feature_b_id = fb.id
-		WHERE pc.id = $1
+		WHERE pc.id = ?
 	`
 
 	var comparison domain.SessionComparison
@@ -231,7 +231,7 @@ func (r *PairwiseRepository) GetComparisonByID(comparisonID int) (*domain.Sessio
 func (r *PairwiseRepository) CreateVote(vote domain.AttendeeVote) (*domain.AttendeeVote, error) {
 	query := `
 		INSERT INTO attendee_votes (comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at)
-		VALUES ($1, $2, $3, $4, NOW())
+		VALUES (?, ?, ?, ?, datetime('now'))
 		RETURNING id, comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at
 	`
 
@@ -256,8 +256,8 @@ func (r *PairwiseRepository) CreateVote(vote domain.AttendeeVote) (*domain.Atten
 func (r *PairwiseRepository) UpdateVote(vote domain.AttendeeVote) error {
 	query := `
 		UPDATE attendee_votes
-		SET preferred_feature_id = $1, is_tie_vote = $2, voted_at = NOW()
-		WHERE comparison_id = $3 AND attendee_id = $4
+		SET preferred_feature_id = ?, is_tie_vote = ?, voted_at = datetime('now')
+		WHERE comparison_id = ? AND attendee_id = ?
 	`
 
 	_, err := r.db.Exec(query, vote.PreferredFeatureID, vote.IsTieVote, vote.ComparisonID, vote.AttendeeID)
@@ -272,7 +272,7 @@ func (r *PairwiseRepository) GetVotesByComparisonID(comparisonID int) ([]domain.
 		       a.id, a.name, a.role
 		FROM attendee_votes av
 		JOIN attendees a ON av.attendee_id = a.id
-		WHERE av.comparison_id = $1
+		WHERE av.comparison_id = ?
 		ORDER BY av.voted_at ASC
 	`
 
@@ -351,8 +351,8 @@ func (r *PairwiseRepository) CheckConsensusAndUpdate(comparisonID int, totalAtte
 	if consensusReached {
 		query := `
 			UPDATE pairwise_comparisons
-			SET winner_id = $1, is_tie = $2, consensus_reached = $3
-			WHERE id = $4
+			SET winner_id = ?, is_tie = ?, consensus_reached = ?
+			WHERE id = ?
 		`
 		_, err = r.db.Exec(query, winnerID, isTie, consensusReached, comparisonID)
 		if err != nil {
@@ -370,7 +370,7 @@ func (r *PairwiseRepository) GetSessionProgress(sessionID int) (*domain.SessionP
 			COUNT(*) as total_comparisons,
 			COUNT(CASE WHEN consensus_reached = true THEN 1 END) as completed_comparisons
 		FROM pairwise_comparisons
-		WHERE session_id = $1
+		WHERE session_id = ?
 	`
 
 	var progress domain.SessionProgress
@@ -397,7 +397,7 @@ func (r *PairwiseRepository) GetVoteByAttendeeAndComparison(comparisonID, attend
 	query := `
 		SELECT id, comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at
 		FROM attendee_votes
-		WHERE comparison_id = $1 AND attendee_id = $2
+		WHERE comparison_id = ? AND attendee_id = ?
 	`
 
 	var vote domain.AttendeeVote

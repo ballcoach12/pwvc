@@ -25,10 +25,10 @@ const Layout = ({ children }) => {
             }}
             onClick={handleTitleClick}
           >
-            P-WVC
+            PairWise
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            Pairwise-Weighted Value/Complexity
+            Feature Prioritization Through Group Consensus
           </Typography>
         </Toolbar>
       </AppBar>
@@ -53,7 +53,7 @@ const Layout = ({ children }) => {
       >
         <Container maxWidth="lg">
           <Typography variant="body2" color="text.secondary" align="center">
-            P-WVC © {new Date().getFullYear()} - Feature prioritization through group consensus
+            PairWise © {new Date().getFullYear()} - Feature prioritization through group consensus
           </Typography>
         </Container>
       </Box>

@@ -5,7 +5,8 @@ export const featureService = {
   async getFeatures(projectId) {
     try {
       const response = await api.get(`/projects/${projectId}/features`)
-      return handleApiResponse(response)
+      const data = handleApiResponse(response)
+      return data.features || []
     } catch (error) {
       handleApiError(error)
     }

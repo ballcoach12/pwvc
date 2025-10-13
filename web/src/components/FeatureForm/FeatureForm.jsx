@@ -44,7 +44,9 @@ const FeatureForm = ({ onSubmit, onCancel, initialData = null, isLoading = false
       newErrors.name = 'Feature name must be at least 3 characters'
     }
 
-    if (formData.description && formData.description.length > 500) {
+    if (!formData.description || !formData.description.trim()) {
+      newErrors.description = 'Description is required'
+    } else if (formData.description.length > 500) {
       newErrors.description = 'Description must be less than 500 characters'
     }
 
@@ -60,8 +62,7 @@ const FeatureForm = ({ onSubmit, onCancel, initialData = null, isLoading = false
     }
 
     const cleanedData = {
-      ...formData,
-      name: formData.name.trim(),
+      title: formData.name.trim(),
       description: formData.description?.trim() || '',
     }
 
@@ -111,12 +112,13 @@ const FeatureForm = ({ onSubmit, onCancel, initialData = null, isLoading = false
               value={formData.description}
               onChange={handleChange('description')}
               error={Boolean(errors.description)}
-              helperText={errors.description || `${formData.description.length}/500 characters`}
+              helperText={errors.description || `Required. ${formData.description.length}/500 characters`}
               multiline
               rows={3}
               fullWidth
               placeholder="Provide additional context about this feature..."
               inputProps={{ maxLength: 500 }}
+              required
             />
           </Box>
         </CardContent>

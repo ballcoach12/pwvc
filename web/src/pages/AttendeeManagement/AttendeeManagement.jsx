@@ -47,7 +47,7 @@ const AttendeeManagement = () => {
         projectService.getProjectAttendees(id)
       ])
       setProject(projectData)
-      setAttendees(attendeesData || [])
+      setAttendees(attendeesData.attendees || [])
     } catch (err) {
       enqueueSnackbar(err.message || 'Failed to load project data', { variant: 'error' })
       navigate('/projects')
@@ -181,7 +181,7 @@ const AttendeeManagement = () => {
       </Typography>
       
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Add team members who will participate in the P-WVC prioritization process. 
+        Add team members who will participate in the PairWise prioritization process. 
         Assign at least one facilitator to guide the session.
       </Typography>
 
@@ -259,7 +259,7 @@ const AttendeeManagement = () => {
 
           <Alert severity="info" sx={{ mt: 2 }}>
             <Typography variant="body2">
-              <strong>Facilitator Role:</strong> Facilitators guide the P-WVC process, 
+              <strong>Facilitator Role:</strong> Facilitators guide the PairWise process, 
               manage discussions, and ensure consensus is reached. At least one facilitator is recommended.
             </Typography>
           </Alert>

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // PWVCService handles P-WVC methodology calculations and business logic

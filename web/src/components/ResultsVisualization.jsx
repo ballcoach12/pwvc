@@ -1,5 +1,5 @@
 import {
-    BarChart3 as BarChart3Icon,
+    BarChart as BarChart3Icon,
     PieChart as PieChartIcon,
     ScatterPlot as ScatterPlotIcon,
     TrendingUp as TrendingUpIcon,
@@ -48,7 +48,7 @@ const ResultsVisualization = ({ results, summary }) => {
             Results Visualization
           </Typography>
           <Typography color="textSecondary">
-            No results available to visualize. Please calculate P-WVC results first.
+            No results available to visualize. Please calculate PairWise results first.
           </Typography>
         </CardContent>
       </Card>

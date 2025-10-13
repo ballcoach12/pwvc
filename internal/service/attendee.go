@@ -1,8 +1,8 @@
 package service
 
 import (
-	"pwvc/internal/domain"
-	"pwvc/internal/repository"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
 )
 
 // AttendeeService handles business logic for attendees

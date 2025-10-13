@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 
 	"github.com/gin-gonic/gin"
 )

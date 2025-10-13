@@ -1,291 +1,209 @@
-# P-WVC (Pairwise-Weighted Value/Complexity) Model API
+# PairWise
 
-A Go backend service implementing the P-WVC methodology for objective feature prioritization through group consensus.
+A web application for feature prioritization through group consensus using pairwise comparison methodology.
 
-## Project Structure
+## Overview
 
-```
-pwvc/
-├── cmd/
-│   ├── server/          # Main application entry point
-│   └── migrate/         # Database migration utility
-├── internal/
-│   ├── api/            # REST API handlers
-│   ├── domain/         # Business entities and errors
-│   ├── repository/     # Data persistence layer
-│   ├── service/        # Business logic layer
-│   └── websocket/      # Real-time collaboration (future)
-├── migrations/         # Database schema migrations
-├── pkg/               # Shared utilities
-└── web/               # React frontend (future)
-```
+The PairWise model provides a structured approach to feature prioritization by combining:
 
-## Prerequisites
+- Pairwise comparisons for Value and Complexity criteria
+- Win-count weighting to establish relative standings
+- Fibonacci scoring for absolute magnitude assessment
+- Mathematical calculation of Final Priority Scores (FPS)
 
-- Go 1.23.3 or later
-- PostgreSQL 12+
-- Git
+## Technology Stack
 
-## Setup
+- **Backend**: Go 1.23.3 with Gin web framework
+- **Frontend**: React with Vite build system
+- **Database**: PostgreSQL
+- **Real-time**: WebSocket for collaborative features
+- **Deployment**: Docker with multi-stage builds
+- **Monitoring**: Prometheus/Grafana integration
+- **Testing**: Comprehensive Go and React test suites
 
-1. **Clone the repository**
+## Quick Start
 
-   ```bash
-   git clone <repository-url>
-   cd pwvc
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   go mod tidy
-   ```
-
-3. **Set up PostgreSQL database**
-
-   ```bash
-   # Create database
-   createdb pwvc
-
-   # Or use Docker
-   docker run --name pwvc-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=pwvc -p 5432:5432 -d postgres:15
-   ```
-
-4. **Set environment variables** (optional)
-
-   ```bash
-   export DATABASE_URL="postgres://postgres:password@localhost:5432/pwvc?sslmode=disable"
-   export PORT="8080"
-   export GIN_MODE="debug"  # or "release" for production
-   ```
-
-5. **Run database migrations**
-
-   ```bash
-   go run cmd/migrate/main.go up
-   ```
-
-6. **Start the server**
-   ```bash
-   go run cmd/server/main.go
-   ```
-
-The server will start on port 8080 (or the PORT environment variable).
-
-## API Endpoints
-
-### Projects
-
-- `POST /api/projects` - Create new project
-- `GET /api/projects/{id}` - Get project details
-- `PUT /api/projects/{id}` - Update project
-- `DELETE /api/projects/{id}` - Delete project
-- `GET /api/projects` - List all projects
-
-### Attendees
-
-- `POST /api/projects/{id}/attendees` - Add attendee to project
-- `GET /api/projects/{id}/attendees` - List project attendees
-- `DELETE /api/projects/{id}/attendees/{attendee_id}` - Remove attendee
-
-### Features
-
-- `POST /api/projects/{id}/features` - Create new feature
-- `GET /api/projects/{id}/features` - List all features in project
-- `GET /api/projects/{id}/features/{feature_id}` - Get specific feature
-- `PUT /api/projects/{id}/features/{feature_id}` - Update feature
-- `DELETE /api/projects/{id}/features/{feature_id}` - Delete feature
-- `POST /api/projects/{id}/features/import` - Import features from CSV
-- `GET /api/projects/{id}/features/export` - Export features to CSV
-
-### Health Check
-
-- `GET /health` - Service health check
-- `GET /` - API information
-
-## Example Usage
-
-### Create a Project
+### Local Development
 
 ```bash
-curl -X POST http://localhost:8080/api/projects \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Website Redesign",
-    "description": "Modernize company website with new features"
-  }'
+# Clone and enter directory
+git clone <repository-url>
+cd pairwise
+
+# Install dependencies and run
+go mod tidy
+go run .
 ```
 
-### Add Attendee
+### Docker Deployment
 
 ```bash
-curl -X POST http://localhost:8080/api/projects/1/attendees \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "role": "Product Manager",
-    "is_facilitator": true
-  }'
+# Start with Docker Compose
+docker-compose up -d
+
+# Or build and run manually
+docker build -t pairwise-backend .
+docker run -p 8080:8080 pairwise-backend
 ```
 
-### Create Feature
+Visit `http://localhost:8080` to access the application.
 
-```bash
-curl -X POST http://localhost:8080/api/projects/1/features \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "User Authentication",
-    "description": "Implement secure user login and registration functionality",
-    "acceptance_criteria": "Users should be able to login with email/password and receive appropriate error messages for invalid credentials"
-  }'
+## PairWise Methodology
+
+### The Formula
+
+```
+FPS = (SValue × WValue) / (SComplexity × WComplexity)
 ```
 
-### Import Features from CSV
+Where:
 
-```bash
-curl -X POST http://localhost:8080/api/projects/1/features/import \
-  -F "file=@features.csv"
-```
+- **SValue**: Fibonacci score for business value (1,2,3,5,8,13,21,34,55,89)
+- **WValue**: Win-count weight from pairwise value comparisons
+- **SComplexity**: Fibonacci score for implementation complexity
+- **WComplexity**: Win-count weight from pairwise complexity comparisons
 
-### Export Features to CSV
+### Process Flow
 
-```bash
-curl -X GET http://localhost:8080/api/projects/1/features/export \
-  -o "project_features.csv"
-```
+1. **Setup** → Define project scope and team
+2. **Attendees** → Add team members and assign facilitator
+3. **Features** → Define features to prioritize
+4. **Pairwise Value** → Compare features for business value
+5. **Pairwise Complexity** → Compare features for implementation difficulty
+6. **Fibonacci Value** → Score absolute value magnitude
+7. **Fibonacci Complexity** → Score absolute complexity magnitude
+8. **Results** → Calculate and review Final Priority Scores
 
-## Database Schema
+## Documentation
 
-### Projects Table
+### For Users
 
-```sql
-CREATE TABLE projects (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
+- **[User Manual](docs/USER_MANUAL.md)** - Complete guide to using PairWise
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API and WebSocket reference
 
-### Attendees Table
+### For Developers
 
-```sql
-CREATE TABLE attendees (
-    id SERIAL PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    role VARCHAR(100),
-    is_facilitator BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-### Features Table
-
-```sql
-CREATE TABLE features (
-    id SERIAL PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    acceptance_criteria TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## CSV Import/Export Format
-
-### CSV Structure for Features
-
-```csv
-title,description,acceptance_criteria
-"User Login","Users can authenticate with email/password","Given valid credentials, user should be logged in successfully"
-"Dashboard View","Display key metrics and navigation","Dashboard loads within 2 seconds and shows current data"
-```
-
-### Validation Rules
-
-- **Title**: Required, maximum 255 characters
-- **Description**: Required, maximum 5000 characters
-- **Acceptance Criteria**: Optional, maximum 5000 characters
-
-### CSV Import Process
-
-1. Upload CSV file via `POST /api/projects/{id}/features/import`
-2. System validates each row according to rules above
-3. Valid features are imported, invalid rows are reported in response
-4. Response includes counts of imported/skipped records and error details
+- **[Architecture Documentation](doc/)** - Technical implementation details
+- **[Feature Management](doc/FEATURE_MANAGEMENT_SUMMARY.md)** - Feature workflow documentation
+- **[React Frontend](doc/REACT_FRONTEND_SUMMARY.md)** - Frontend architecture guide
 
 ## Development
 
-### Build
+### Project Structure
 
-```bash
-go build -o pwvc ./cmd/server
+```
+pairwise/
+├── cmd/
+│   ├── server/             # Application entry point
+│   └── migrate/            # Database migration tool
+├── internal/
+│   ├── api/                # REST handlers, WebSocket, middleware
+│   ├── domain/             # Core PairWise business logic
+│   ├── repository/         # Data persistence layer
+│   ├── service/            # Business services
+│   └── websocket/          # Real-time collaboration
+├── web/                    # React frontend application
+├── migrations/             # Database schema migrations
+├── monitoring/             # Prometheus/Grafana configuration
+├── docs/                   # Comprehensive documentation
+└── pkg/                    # Shared utilities
 ```
 
-### Run Tests
+### Development Commands
 
 ```bash
-go test ./...
+# Development
+go mod tidy                 # Install dependencies
+go run .                    # Run application
+go test ./...              # Run backend tests
+cd web && npm test         # Run frontend tests
+
+# Production
+go build -o pairwise .     # Build binary
+docker build -t pairwise . # Build container
 ```
 
-### Format Code
+### Testing
 
-```bash
-go fmt ./...
-```
+- **Backend**: Go standard testing with integration tests
+- **Frontend**: React Testing Library with Vitest
+- **API**: Comprehensive endpoint and workflow testing
+- **Coverage**: Full test coverage across all components
 
-### Lint Code
+## Features
 
-```bash
-go vet ./...
-```
+### Core PairWise Functionality
 
-## Migration Commands
+- [x] Project and attendee management
+- [x] Feature definition with bulk import
+- [x] Pairwise comparison workflows (Value & Complexity)
+- [x] Fibonacci scoring interface with consensus tracking
+- [x] Real-time collaborative voting via WebSocket
+- [x] Automatic priority calculation and ranking
+- [x] Results visualization and CSV export
 
-```bash
-# Apply all pending migrations
-go run cmd/migrate/main.go up
+### Production Features
 
-# Rollback all migrations
-go run cmd/migrate/main.go down
+- [x] Session state persistence and recovery
+- [x] Comprehensive error handling and validation
+- [x] Workflow navigation with progress tracking
+- [x] Health monitoring and structured logging
+- [x] Docker containerization with monitoring stack
+- [x] Rate limiting and security middleware
+- [x] Database migrations and connection pooling
 
-# Check current migration version
-go run cmd/migrate/main.go version
+## Deployment Options
 
-# Force specific version (use with caution)
-go run cmd/migrate/main.go force 1
-```
+### Local Development
 
-## Environment Variables
+- Direct Go execution with file-based configuration
+- Hot-reload development server for frontend
 
-| Variable       | Default                                                            | Description                             |
-| -------------- | ------------------------------------------------------------------ | --------------------------------------- |
-| `DATABASE_URL` | `postgres://postgres:password@localhost:5432/pwvc?sslmode=disable` | PostgreSQL connection string            |
-| `PORT`         | `8080`                                                             | HTTP server port                        |
-| `GIN_MODE`     | `debug`                                                            | Gin framework mode (`debug`, `release`) |
+### Docker (Recommended)
 
-## Next Steps
+- Multi-stage builds for optimized images
+- Docker Compose with PostgreSQL and Redis
+- Monitoring stack with Prometheus/Grafana
 
-This foundation provides:
+### Production Platforms
 
-- ✅ Basic project and attendee management
-- ✅ PostgreSQL integration with migrations
-- ✅ RESTful API with proper error handling
-- ✅ Feature management with CRUD operations
-- ✅ CSV import/export for bulk feature operations
-- ✅ Clean architecture (domain, service, repository layers)
-- ✅ CORS support for frontend integration
-- ✅ Comprehensive validation and error handling
+- **AWS ECS**: Container orchestration with RDS
+- **Kubernetes**: Scalable deployment with Helm charts
+- **Traditional Servers**: Systemd service deployment
+- **Cloud Platforms**: Heroku, DigitalOcean, etc.
 
-Future development will add:
+## Monitoring and Observability
 
-- Pairwise comparison engine (core P-WVC methodology)
-- Fibonacci scoring system
-- Win-count weighting calculations
-- WebSocket real-time collaboration
-- React frontend interface
+- **Health Checks**: `/health` endpoint for load balancer integration
+- **Metrics**: Prometheus metrics for performance monitoring
+- **Logging**: Structured JSON logs with request tracing
+- **Alerts**: Configurable alerts for system health
+- **Dashboards**: Grafana dashboards for visualization
+
+## Security
+
+- Input validation and sanitization
+- Rate limiting to prevent abuse
+- Secure headers and CORS configuration
+- Database connection security
+- Docker security best practices
+
+## Contributing
+
+1. **Code Standards**: Follow Go best practices and formatting (`go fmt`)
+2. **Testing**: Add comprehensive tests for new functionality
+3. **Documentation**: Update relevant documentation
+4. **Review Process**: Ensure all tests pass and code review approval
+5. **Security**: Follow secure coding practices and validate inputs
+
+## Support
+
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Documentation**: Comprehensive guides in `docs/` directory
+- **API Reference**: Complete endpoint documentation available
+- **Community**: Contribute improvements and share experiences
+
+## License
+
+[Add your license information here]

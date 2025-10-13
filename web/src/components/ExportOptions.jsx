@@ -76,7 +76,7 @@ const ExportOptions = ({ results, projectName, onExport }) => {
   const getFileName = (format) => {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
     const sanitizedProjectName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()
-    return `pwvc_results_${sanitizedProjectName}_${timestamp}.${format === 'jira' ? 'json' : format}`
+    return `pairwise_results_${sanitizedProjectName}_${timestamp}.${format === 'jira' ? 'json' : format}`
   }
 
   const ExportCard = ({ format, title, icon, description, color }) => (
@@ -197,7 +197,7 @@ const ExportOptions = ({ results, projectName, onExport }) => {
             Export Results
           </Typography>
           <Typography color="textSecondary">
-            No results available to export. Please calculate P-WVC results first.
+            No results available to export. Please calculate PairWise results first.
           </Typography>
         </CardContent>
       </Card>
@@ -211,12 +211,12 @@ const ExportOptions = ({ results, projectName, onExport }) => {
           <Box display="flex" alignItems="center" mb={3}>
             <CloudDownloadIcon sx={{ mr: 2, color: theme.palette.primary.main }} />
             <Typography variant="h6" component="h2">
-              Export P-WVC Results
+              Export PairWise Results
             </Typography>
           </Box>
 
           <Typography variant="body2" color="textSecondary" mb={4}>
-            Export your P-WVC calculation results in multiple formats for different use cases.
+            Export your PairWise calculation results in multiple formats for different use cases.
             All exports include complete calculation details and feature rankings.
           </Typography>
 

@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // ProjectRepository handles database operations for projects
@@ -20,7 +20,7 @@ func NewProjectRepository(db *sql.DB) *ProjectRepository {
 func (r *ProjectRepository) Create(req domain.CreateProjectRequest) (*domain.Project, error) {
 	query := `
 		INSERT INTO projects (name, description, status, created_at, updated_at)
-		VALUES ($1, $2, 'active', NOW(), NOW())
+		VALUES (?, ?, 'active', datetime('now'), datetime('now'))
 		RETURNING id, name, description, status, created_at, updated_at
 	`
 
@@ -46,7 +46,7 @@ func (r *ProjectRepository) GetByID(id int) (*domain.Project, error) {
 	query := `
 		SELECT id, name, description, status, created_at, updated_at
 		FROM projects
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var project domain.Project
@@ -73,8 +73,8 @@ func (r *ProjectRepository) GetByID(id int) (*domain.Project, error) {
 func (r *ProjectRepository) Update(id int, req domain.UpdateProjectRequest) (*domain.Project, error) {
 	query := `
 		UPDATE projects 
-		SET name = $2, description = $3, status = $4, updated_at = NOW()
-		WHERE id = $1
+		SET name = ?, description = ?, status = ?, updated_at = datetime('now')
+		WHERE id = ?
 		RETURNING id, name, description, status, created_at, updated_at
 	`
 
@@ -84,7 +84,7 @@ func (r *ProjectRepository) Update(id int, req domain.UpdateProjectRequest) (*do
 	}
 
 	var project domain.Project
-	err := r.db.QueryRow(query, id, req.Name, req.Description, status).Scan(
+	err := r.db.QueryRow(query, req.Name, req.Description, status, id).Scan(
 		&project.ID,
 		&project.Name,
 		&project.Description,
@@ -105,7 +105,7 @@ func (r *ProjectRepository) Update(id int, req domain.UpdateProjectRequest) (*do
 
 // Delete deletes a project
 func (r *ProjectRepository) Delete(id int) error {
-	query := `DELETE FROM projects WHERE id = $1`
+	query := `DELETE FROM projects WHERE id = ?`
 
 	result, err := r.db.Exec(query, id)
 	if err != nil {

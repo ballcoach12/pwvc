@@ -23,7 +23,7 @@ const CalculationDetails = ({ result }) => {
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            P-WVC Calculation Details
+            PairWise Calculation Details
           </Typography>
           <Typography color="textSecondary">
             Select a feature to see calculation breakdown.
@@ -91,7 +91,7 @@ const CalculationDetails = ({ result }) => {
         <Box display="flex" alignItems="center" mb={3}>
           <CalculateIcon sx={{ mr: 2, color: theme.palette.primary.main }} />
           <Typography variant="h6" component="h2">
-            P-WVC Calculation Breakdown: "{result.feature.title}"
+            PairWise Calculation Breakdown: "{result.feature.title}"
           </Typography>
         </Box>
 
@@ -137,10 +137,10 @@ const CalculationDetails = ({ result }) => {
 
         <Divider sx={{ my: 3 }} />
 
-        {/* P-WVC Formula Explanation */}
+        {/* PairWise Formula Explanation */}
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <FunctionsIcon sx={{ mr: 1 }} />
-          P-WVC Mathematical Formula
+          PairWise Mathematical Formula
         </Typography>
         
         <Box mb={3}>
@@ -251,10 +251,10 @@ const CalculationDetails = ({ result }) => {
         {/* Methodology Note */}
         <Box mt={3} p={2} sx={{ backgroundColor: theme.palette.info.light + '10', borderRadius: 1 }}>
           <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-            P-WVC Methodology Note
+            PairWise Methodology Note
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            The P-WVC (Pairwise-Weighted Value/Complexity) model ensures objective feature prioritization 
+            The PairWise (Pairwise-Weighted Value/Complexity) model ensures objective feature prioritization 
             by combining team consensus through Fibonacci scoring with mathematical win-count weights 
             from pairwise comparisons. Higher scores indicate features with better value-to-complexity ratios.
           </Typography>

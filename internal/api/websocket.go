@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"pwvc/internal/websocket"
+	"pairwise/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 	gorilla_websocket "github.com/gorilla/websocket"

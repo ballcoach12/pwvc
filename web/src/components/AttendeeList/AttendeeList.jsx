@@ -24,7 +24,7 @@ const AttendeeList = ({ attendees = [], onRemove, onSetFacilitator, readOnly = f
           No attendees added yet
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Add team members to begin the P-WVC process
+          Add team members to begin the PairWise process
         </Typography>
       </Box>
     )

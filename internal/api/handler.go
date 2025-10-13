@@ -2,11 +2,12 @@ package api
 
 import (
 	"net/http"
+	"time"
 
-	"pwvc/internal/domain"
-	"pwvc/internal/repository"
-	"pwvc/internal/service"
-	"pwvc/internal/websocket"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
+	"pairwise/internal/service"
+	"pairwise/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type Handler struct {
 	pairwiseService *service.PairwiseService
 	pwvcService     *service.PWVCService
 	resultsService  *service.ResultsService
+	progressService *service.ProgressService
 	wsHub           *websocket.Hub
 	priorityRepo    *repository.PriorityRepository
 }
@@ -31,6 +33,7 @@ func NewHandler(
 	pairwiseService *service.PairwiseService,
 	pwvcService *service.PWVCService,
 	resultsService *service.ResultsService,
+	progressService *service.ProgressService,
 	priorityRepo *repository.PriorityRepository,
 	hub *websocket.Hub,
 ) *Handler {
@@ -41,6 +44,7 @@ func NewHandler(
 		pairwiseService: pairwiseService,
 		pwvcService:     pwvcService,
 		resultsService:  resultsService,
+		progressService: progressService,
 		priorityRepo:    priorityRepo,
 		wsHub:           hub,
 	}
@@ -88,12 +92,58 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 			projects.GET("/:id/results/summary", h.GetResultsSummary)
 			projects.GET("/:id/results/status", h.CheckResultsStatus)
 			projects.GET("/:id/results/preview", h.PreviewExport)
+
+			// Progress endpoints
+			projects.GET("/:id/progress", h.GetProjectProgress)
+			projects.POST("/:id/progress/advance", h.AdvancePhase)
+			projects.POST("/:id/progress/complete", h.CompletePhase)
+			projects.GET("/:id/progress/phases", h.GetAvailablePhases)
 		}
 
 		// WebSocket endpoint
 		api.GET("/ws/:projectId", h.HandleWebSocket)
 		api.GET("/ws/stats", h.GetWebSocketStats)
 	}
+
+	// Add health endpoints to the main router (not under /api)
+	h.registerHealthEndpoints(router)
+}
+
+// registerHealthEndpoints adds health check endpoints
+func (h *Handler) registerHealthEndpoints(router *gin.Engine) {
+	// Basic health check
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"service":   "pwvc",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
+	// If we have access to database, use detailed health checks
+	// This would need to be passed to the handler constructor
+	// For now, we'll use a simple implementation
+}
+
+// Progress endpoints - delegate to progress handler
+func (h *Handler) GetProjectProgress(c *gin.Context) {
+	progressHandler := NewProgressHandler(h.progressService)
+	progressHandler.GetProjectProgress(c)
+}
+
+func (h *Handler) AdvancePhase(c *gin.Context) {
+	progressHandler := NewProgressHandler(h.progressService)
+	progressHandler.AdvancePhase(c)
+}
+
+func (h *Handler) CompletePhase(c *gin.Context) {
+	progressHandler := NewProgressHandler(h.progressService)
+	progressHandler.CompletePhase(c)
+}
+
+func (h *Handler) GetAvailablePhases(c *gin.Context) {
+	progressHandler := NewProgressHandler(h.progressService)
+	progressHandler.GetAvailablePhases(c)
 }
 
 // handleServiceError is a utility function to handle service errors consistently

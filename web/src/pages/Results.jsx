@@ -134,7 +134,7 @@ const resultsService = {
     await new Promise(resolve => setTimeout(resolve, 1000))
     
     // Simulate file download
-    const fileName = `pwvc_results_${projectId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${format === 'jira' ? 'json' : format}`
+    const fileName = `pairwise_results_${projectId}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${format === 'jira' ? 'json' : format}`
     
     // Create mock data based on format
     let content, mimeType
@@ -288,10 +288,10 @@ const Results = () => {
           <CardContent sx={{ textAlign: 'center', py: 6 }}>
             <AssessmentIcon sx={{ fontSize: 64, color: theme.palette.primary.main, mb: 2 }} />
             <Typography variant="h4" gutterBottom>
-              P-WVC Results Not Available
+              PairWise Results Not Available
             </Typography>
             <Typography variant="body1" color="textSecondary" sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}>
-              No P-WVC calculation results found for this project. You need to complete both 
+              No PairWise calculation results found for this project. You need to complete both 
               pairwise comparisons and Fibonacci scoring before calculating final priority scores.
             </Typography>
             
@@ -303,7 +303,7 @@ const Results = () => {
                 onClick={() => setCalculationDialog(true)}
                 disabled={calculating}
               >
-                {calculating ? 'Calculating...' : 'Calculate P-WVC Results'}
+                {calculating ? 'Calculating...' : 'Calculate PairWise Results'}
               </Button>
               
               <Button
@@ -325,7 +325,7 @@ const Results = () => {
 
             <Box mt={4} p={3} sx={{ backgroundColor: theme.palette.info.light + '10', borderRadius: 2, textAlign: 'left', maxWidth: 800, mx: 'auto' }}>
               <Typography variant="h6" gutterBottom>
-                Prerequisites for P-WVC Calculation
+                Prerequisites for PairWise Calculation
               </Typography>
               <Typography variant="body2" component="div">
                 <ul>
@@ -348,7 +348,7 @@ const Results = () => {
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
           <Box>
             <Typography variant="h4" gutterBottom>
-              P-WVC Results: {project?.name}
+              PairWise Results: {project?.name}
             </Typography>
             <Typography variant="body1" color="textSecondary">
               Final Priority Scores calculated on {new Date(results.calculatedAt).toLocaleString()}
@@ -455,10 +455,10 @@ const Results = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              About P-WVC Methodology
+              About PairWise Methodology
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              The P-WVC (Pairwise-Weighted Value/Complexity) model combines objective mathematical calculations 
+              The PairWise (Pairwise-Weighted Value/Complexity) model combines objective mathematical calculations 
               with team consensus to provide unbiased feature prioritization. The Final Priority Score is calculated 
               using the formula: <strong>FPS = (S<sub>Value</sub> × W<sub>Value</sub>) ÷ (S<sub>Complexity</sub> × W<sub>Complexity</sub>)</strong>, 
               where S represents Fibonacci consensus scores and W represents win-count weights from pairwise comparisons.
@@ -469,7 +469,7 @@ const Results = () => {
 
       {/* Calculation Confirmation Dialog */}
       <Dialog open={calculationDialog} onClose={() => !calculating && setCalculationDialog(false)}>
-        <DialogTitle>Calculate P-WVC Results</DialogTitle>
+        <DialogTitle>Calculate PairWise Results</DialogTitle>
         <DialogContent>
           <DialogContentText>
             This will recalculate the Final Priority Scores for all features based on the current 

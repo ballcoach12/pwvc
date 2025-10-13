@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // Integration test with a realistic P-WVC scenario using a sample project

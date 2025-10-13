@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // AttendeeRepository handles database operations for attendees
@@ -20,7 +20,7 @@ func NewAttendeeRepository(db *sql.DB) *AttendeeRepository {
 func (r *AttendeeRepository) Create(projectID int, req domain.CreateAttendeeRequest) (*domain.Attendee, error) {
 	query := `
 		INSERT INTO attendees (project_id, name, role, is_facilitator, created_at)
-		VALUES ($1, $2, $3, $4, NOW())
+		VALUES (?, ?, ?, ?, datetime('now'))
 		RETURNING id, project_id, name, role, is_facilitator, created_at
 	`
 
@@ -46,7 +46,7 @@ func (r *AttendeeRepository) GetByID(id int) (*domain.Attendee, error) {
 	query := `
 		SELECT id, project_id, name, role, is_facilitator, created_at
 		FROM attendees
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var attendee domain.Attendee
@@ -74,7 +74,7 @@ func (r *AttendeeRepository) GetByProjectID(projectID int) ([]domain.Attendee, e
 	query := `
 		SELECT id, project_id, name, role, is_facilitator, created_at
 		FROM attendees
-		WHERE project_id = $1
+		WHERE project_id = ?
 		ORDER BY created_at ASC
 	`
 
@@ -106,7 +106,7 @@ func (r *AttendeeRepository) GetByProjectID(projectID int) ([]domain.Attendee, e
 
 // Delete deletes an attendee
 func (r *AttendeeRepository) Delete(id int) error {
-	query := `DELETE FROM attendees WHERE id = $1`
+	query := `DELETE FROM attendees WHERE id = ?`
 
 	result, err := r.db.Exec(query, id)
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *AttendeeRepository) Delete(id int) error {
 
 // DeleteByProjectID deletes all attendees for a project
 func (r *AttendeeRepository) DeleteByProjectID(projectID int) error {
-	query := `DELETE FROM attendees WHERE project_id = $1`
+	query := `DELETE FROM attendees WHERE project_id = ?`
 	_, err := r.db.Exec(query, projectID)
 	return err
 }

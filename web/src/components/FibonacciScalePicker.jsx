@@ -26,7 +26,7 @@ import { useState } from 'react'
  * - Customizable styling and orientation
  */
 
-// Valid Fibonacci sequence values for P-WVC scoring
+// Valid Fibonacci sequence values for PairWise scoring
 export const FIBONACCI_VALUES = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
 
 // Explanatory tooltips for each Fibonacci value

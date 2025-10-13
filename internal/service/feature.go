@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"pwvc/internal/domain"
-	"pwvc/internal/repository"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
 )
 
 // FeatureService handles business logic for features

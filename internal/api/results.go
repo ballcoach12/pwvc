@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 
 	"github.com/gin-gonic/gin"
 )

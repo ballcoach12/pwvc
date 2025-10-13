@@ -105,7 +105,7 @@ const ResultsRanking = ({ results, onExport }) => {
             Feature Rankings
           </Typography>
           <Typography color="textSecondary">
-            No results available. Please calculate P-WVC results first.
+            No results available. Please calculate PairWise results first.
           </Typography>
         </CardContent>
       </Card>

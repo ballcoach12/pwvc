@@ -5,8 +5,8 @@ import (
 	"sort"
 	"time"
 
-	"pwvc/internal/domain"
-	"pwvc/internal/repository"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
 )
 
 // ResultsService handles P-WVC results calculation and management

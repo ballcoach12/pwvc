@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"pwvc/internal/domain"
-	"pwvc/internal/repository"
-	"pwvc/internal/websocket"
+	"pairwise/internal/domain"
+	"pairwise/internal/repository"
+	"pairwise/internal/websocket"
 )
 
 // WebSocketBroadcaster defines the interface for WebSocket broadcasting

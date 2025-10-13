@@ -22,7 +22,7 @@ func main() {
 	// Get database URL from environment
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:password@localhost:5432/pwvc?sslmode=disable"
+		dbURL = "postgres://postgres:password@localhost:5432/pairwise?sslmode=disable"
 	}
 
 	// Open database connection

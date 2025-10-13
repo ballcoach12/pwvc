@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // PriorityRepository handles database operations for priority calculations
@@ -24,7 +24,7 @@ func (r *PriorityRepository) Create(calc *domain.PriorityCalculation) error {
 		INSERT INTO priority_calculations (
 			project_id, feature_id, w_value, w_complexity, s_value, s_complexity,
 			weighted_value, weighted_complexity, final_priority_score, rank
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, calculated_at`
 
 	err := r.db.QueryRow(
@@ -44,7 +44,7 @@ func (r *PriorityRepository) GetByProjectID(projectID int) ([]domain.PriorityCal
 		       pc.s_value, pc.s_complexity, pc.weighted_value, pc.weighted_complexity,
 		       pc.final_priority_score, pc.rank, pc.calculated_at
 		FROM priority_calculations pc
-		WHERE pc.project_id = $1
+		WHERE pc.project_id = ?
 		ORDER BY pc.rank ASC`
 
 	rows, err := r.db.Query(query, projectID)
@@ -80,7 +80,7 @@ func (r *PriorityRepository) GetResultsWithFeatures(projectID int) ([]domain.Pri
 		       f.created_at, f.updated_at
 		FROM priority_calculations pc
 		JOIN features f ON pc.feature_id = f.id
-		WHERE pc.project_id = $1
+		WHERE pc.project_id = ?
 		ORDER BY pc.rank ASC`
 
 	rows, err := r.db.Query(query, projectID)
@@ -111,14 +111,14 @@ func (r *PriorityRepository) GetResultsWithFeatures(projectID int) ([]domain.Pri
 
 // DeleteByProjectID removes all priority calculations for a project
 func (r *PriorityRepository) DeleteByProjectID(projectID int) error {
-	query := "DELETE FROM priority_calculations WHERE project_id = $1"
+	query := "DELETE FROM priority_calculations WHERE project_id = ?"
 	_, err := r.db.Exec(query, projectID)
 	return err
 }
 
 // ExistsForProject checks if priority calculations exist for a project
 func (r *PriorityRepository) ExistsForProject(projectID int) (bool, error) {
-	query := "SELECT COUNT(*) FROM priority_calculations WHERE project_id = $1"
+	query := "SELECT COUNT(*) FROM priority_calculations WHERE project_id = ?"
 
 	var count int
 	err := r.db.QueryRow(query, projectID).Scan(&count)
@@ -135,7 +135,7 @@ func (r *PriorityRepository) GetLatestCalculationTime(projectID int) (*domain.Pr
 		SELECT id, project_id, feature_id, w_value, w_complexity, s_value, s_complexity,
 		       weighted_value, weighted_complexity, final_priority_score, rank, calculated_at
 		FROM priority_calculations 
-		WHERE project_id = $1 
+		WHERE project_id = ? 
 		ORDER BY calculated_at DESC 
 		LIMIT 1`
 

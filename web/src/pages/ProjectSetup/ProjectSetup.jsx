@@ -111,6 +111,12 @@ const ProjectSetup = () => {
         enqueueSnackbar('Project created successfully', { variant: 'success' })
       }
 
+      // Validate project response
+      if (!project || !project.id) {
+        enqueueSnackbar('Project created but received invalid response. Please refresh the page.', { variant: 'warning' })
+        return
+      }
+
       // Navigate to attendee management
       navigate(`/projects/${project.id}/attendees`)
     } catch (err) {

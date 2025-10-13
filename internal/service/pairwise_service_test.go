@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"pwvc/internal/domain"
+	"pairwise/internal/domain"
 )
 
 // TestPairwiseComparison_GenerateComparisons tests the comparison generation logic

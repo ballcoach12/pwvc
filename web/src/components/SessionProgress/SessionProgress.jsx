@@ -192,7 +192,7 @@ const SessionProgress = ({
 
           <Collapse in={expanded}>
             <List dense>
-              {attendees.map((attendee, index) => {
+              {(attendees || []).map((attendee, index) => {
                 const progress = getAttendeeProgress(attendee.id)
                 const votedCount = Math.round((progress / 100) * totalComparisons)
                 const isComplete = progress === 100

@@ -31,7 +31,7 @@ import {
     Toolbar,
     Typography
 } from '@mui/material'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import AttendeeVotingPanel from '../components/AttendeeVotingPanel/AttendeeVotingPanel'
 import ComparisonCard from '../components/ComparisonCard/ComparisonCard'
@@ -40,10 +40,10 @@ import PairwiseGrid from '../components/PairwiseGrid'
 import SessionProgress from '../components/SessionProgress/SessionProgress'
 import { useAttendees } from '../hooks/useAttendees'
 import { useFeatures } from '../hooks/useFeatures'
-import { usePairwiseShortcuts } from '../hooks/useKeyboardShortcuts'
+import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts'
 import { useProject } from '../hooks/useProject'
 import { pairwiseService } from '../services/api'
-import { useWebSocket } from '../services/websocketService'
+import pairwiseWebSocketService, { useWebSocket } from '../services/websocketService'
 
 /**
  * PairwiseComparison is the main page for conducting pairwise feature comparisons.
@@ -74,6 +74,9 @@ const PairwiseComparison = () => {
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' })
   const [sessionStarted, setSessionStarted] = useState(false)
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false)
+  const [votes, setVotes] = useState({})
+  const [consensus, setConsensus] = useState({})
+  const [attendeeStatus, setAttendeeStatus] = useState({})
 
   // Refs for keyboard handling
   const containerRef = useRef(null)
@@ -85,18 +88,71 @@ const PairwiseComparison = () => {
   
   const {
     isConnected,
-    votes,
-    consensus,
-    attendeeStatus,
     sendVote,
     joinSession,
     leaveSession
   } = useWebSocket(projectId)
 
-  // Generate all pairwise comparisons
-  const generateComparisons = useCallback(() => {
-    if (!features || features.length < 2) return []
-    
+  // WebSocket event listeners
+  useEffect(() => {
+    if (!isConnected) return
+
+    const handleVoteUpdate = (payload) => {
+      setVotes(prev => ({
+        ...prev,
+        [payload.comparisonId]: {
+          ...prev[payload.comparisonId],
+          [payload.attendeeId]: payload.choice
+        }
+      }))
+    }
+
+    const handleConsensusReached = (payload) => {
+      setConsensus(prev => ({
+        ...prev,
+        [payload.comparisonId]: true
+      }))
+    }
+
+    const handleAttendeeJoined = (payload) => {
+      setAttendeeStatus(prev => ({
+        ...prev,
+        [payload.attendeeId]: 'joined'
+      }))
+    }
+
+    const handleAttendeeLeft = (payload) => {
+      setAttendeeStatus(prev => ({
+        ...prev,
+        [payload.attendeeId]: 'left'
+      }))
+    }
+
+    // Register listeners
+    pairwiseWebSocketService.on('voteUpdate', handleVoteUpdate)
+    pairwiseWebSocketService.on('consensusReached', handleConsensusReached)
+    pairwiseWebSocketService.on('attendeeJoined', handleAttendeeJoined)
+    pairwiseWebSocketService.on('attendeeLeft', handleAttendeeLeft)
+
+    return () => {
+      // Cleanup listeners
+      pairwiseWebSocketService.off('voteUpdate', handleVoteUpdate)
+      pairwiseWebSocketService.off('consensusReached', handleConsensusReached)
+      pairwiseWebSocketService.off('attendeeJoined', handleAttendeeJoined)
+      pairwiseWebSocketService.off('attendeeLeft', handleAttendeeLeft)
+    }
+  }, [isConnected])
+
+  const [comparisons, setComparisons] = useState([])
+
+  // Update comparisons when data changes
+  useEffect(() => {
+    if (!features || features.length < 2) {
+      setComparisons([])
+      return
+    }
+
+    // Generate all pairwise comparisons
     const pairs = []
     for (let i = 0; i < features.length; i++) {
       for (let j = i + 1; j < features.length; j++) {
@@ -111,22 +167,15 @@ const PairwiseComparison = () => {
         })
       }
     }
-    return pairs
-  }, [features, votes, consensus])
 
-  const [comparisons, setComparisons] = useState([])
-
-  // Update comparisons when data changes
-  useEffect(() => {
-    const newComparisons = generateComparisons()
-    setComparisons(newComparisons)
+    setComparisons(pairs)
     
     // Set initial comparison if none selected
-    if (!currentComparison && newComparisons.length > 0) {
-      const firstIncomplete = newComparisons.find(c => !c.hasConsensus)
-      setCurrentComparison(firstIncomplete || newComparisons[0])
+    if (!currentComparison && pairs.length > 0) {
+      const firstIncomplete = pairs.find(c => !c.hasConsensus)
+      setCurrentComparison(firstIncomplete || pairs[0])
     }
-  }, [generateComparisons, currentComparison])
+  }, [features, votes, consensus, currentComparison])
 
   // Join session on component mount
   useEffect(() => {
@@ -141,38 +190,6 @@ const PairwiseComparison = () => {
       }
     }
   }, [projectId, isConnected, joinSession, leaveSession])
-
-  // Keyboard shortcuts using custom hook
-  usePairwiseShortcuts({
-    onVoteA: () => {
-      if (currentComparison && currentAttendee) {
-        handleVote(currentComparison.id, 'A', currentAttendee.id)
-      }
-    },
-    onVoteNeutral: () => {
-      if (currentComparison && currentAttendee) {
-        handleVote(currentComparison.id, 'neutral', currentAttendee.id)
-      }
-    },
-    onVoteB: () => {
-      if (currentComparison && currentAttendee) {
-        handleVote(currentComparison.id, 'B', currentAttendee.id)
-      }
-    },
-    onNext: navigateToNext,
-    onPrevious: navigateToPrevious,
-    onToggleView: () => setViewMode(viewMode === 'grid' ? 'detail' : 'grid'),
-    onToggleFullscreen: toggleFullscreen,
-    onHelp: () => setShortcutsDialogOpen(true),
-    onEscape: () => {
-      if (isFullscreen) {
-        setIsFullscreen(false)
-      } else if (shortcutsDialogOpen) {
-        setShortcutsDialogOpen(false)
-      }
-    },
-    enabled: sessionStarted
-  })
 
   // Navigation functions
   const navigateToNext = () => {
@@ -231,6 +248,38 @@ const PairwiseComparison = () => {
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen)
   }
+
+  // Keyboard shortcuts using custom hook
+  useKeyboardShortcuts({
+    onVoteA: () => {
+      if (currentComparison && currentAttendee) {
+        handleVote(currentComparison.id, 'A', currentAttendee.id)
+      }
+    },
+    onVoteNeutral: () => {
+      if (currentComparison && currentAttendee) {
+        handleVote(currentComparison.id, 'neutral', currentAttendee.id)
+      }
+    },
+    onVoteB: () => {
+      if (currentComparison && currentAttendee) {
+        handleVote(currentComparison.id, 'B', currentAttendee.id)
+      }
+    },
+    onNext: navigateToNext,
+    onPrevious: navigateToPrevious,
+    onToggleView: () => setViewMode(viewMode === 'grid' ? 'detail' : 'grid'),
+    onToggleFullscreen: toggleFullscreen,
+    onHelp: () => setShortcutsDialogOpen(true),
+    onEscape: () => {
+      if (isFullscreen) {
+        setIsFullscreen(false)
+      } else if (shortcutsDialogOpen) {
+        setShortcutsDialogOpen(false)
+      }
+    },
+    enabled: sessionStarted
+  })
 
   const handleExportResults = async () => {
     try {
