@@ -1,8 +1,20 @@
 // Enhanced API client with comprehensive error handling and retry logic
 
 class APIClient {
-  constructor(baseURL = '/api') {
-    this.baseURL = baseURL
+  constructor(baseURL) {
+    // Determine the appropriate base URL based on environment
+    if (baseURL) {
+      this.baseURL = baseURL
+    } else if (import.meta.env.VITE_API_URL) {
+      this.baseURL = import.meta.env.VITE_API_URL
+    } else if (import.meta.env.DEV) {
+      // In development, use the Vite proxy
+      this.baseURL = '/api'
+    } else {
+      // In production, assume API is on the same host
+      this.baseURL = `${window.location.protocol}//${window.location.host}/api`
+    }
+    
     this.defaultTimeout = 30000
     this.retryAttempts = 3
     this.retryDelay = 1000
@@ -389,6 +401,22 @@ export const handleApiError = (error) => {
 
 // Pairwise service wrapper
 export const pairwiseService = {
+  startSession: async (projectId, data) => {
+    try {
+      const response = await api.pairwise.startSession(projectId, data)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
+  getSession: async (projectId) => {
+    try {
+      const response = await api.pairwise.getSession(projectId)
+      return handleApiResponse(response)
+    } catch (error) {
+      handleApiError(error)
+    }
+  },
   getComparisons: async (projectId) => {
     try {
       const response = await api.pairwise.getComparisons(projectId)
@@ -405,8 +433,37 @@ export const pairwiseService = {
       handleApiError(error)
     }
   },
-  submitVote: async (projectId, data) => {
+  submitVote: async (projectId, comparisonId, attendeeId, choice) => {
     try {
+      // Convert choice to the API format
+      let preferredFeatureId = null
+      let isTieVote = false
+      
+      if (choice === 'tie' || choice === 'neutral') {
+        isTieVote = true
+      } else if (choice === 'A') {
+        // Get feature A ID from current comparison - we'll need to fetch it
+        const comparisons = await api.pairwise.getComparisons(projectId)
+        const comparison = comparisons.data.comparisons.find(c => c.comparison.id === comparisonId)
+        if (comparison) {
+          preferredFeatureId = comparison.comparison.feature_a_id
+        }
+      } else if (choice === 'B') {
+        // Get feature B ID from current comparison
+        const comparisons = await api.pairwise.getComparisons(projectId)
+        const comparison = comparisons.data.comparisons.find(c => c.comparison.id === comparisonId)
+        if (comparison) {
+          preferredFeatureId = comparison.comparison.feature_b_id
+        }
+      }
+      
+      const data = {
+        comparison_id: comparisonId,
+        attendee_id: attendeeId,
+        preferred_feature_id: preferredFeatureId,
+        is_tie_vote: isTieVote
+      }
+      
       const response = await api.pairwise.submitVote(projectId, data)
       return handleApiResponse(response)
     } catch (error) {

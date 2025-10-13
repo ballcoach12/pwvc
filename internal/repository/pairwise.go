@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"pairwise/internal/domain"
 )
@@ -18,14 +19,32 @@ func NewPairwiseRepository(db *sql.DB) *PairwiseRepository {
 
 // CreateSession creates a new pairwise comparison session
 func (r *PairwiseRepository) CreateSession(projectID int, criterionType domain.CriterionType) (*domain.PairwiseSession, error) {
-	query := `
+	// First insert the session
+	insertQuery := `
 		INSERT INTO pairwise_sessions (project_id, criterion_type, status, started_at)
 		VALUES (?, ?, ?, datetime('now'))
-		RETURNING id, project_id, criterion_type, status, started_at, completed_at
+	`
+
+	result, err := r.db.Exec(insertQuery, projectID, criterionType, domain.SessionStatusActive)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the inserted ID
+	sessionID, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the created session
+	selectQuery := `
+		SELECT id, project_id, criterion_type, status, started_at, completed_at
+		FROM pairwise_sessions
+		WHERE id = ?
 	`
 
 	var session domain.PairwiseSession
-	err := r.db.QueryRow(query, projectID, criterionType, domain.SessionStatusActive).Scan(
+	err = r.db.QueryRow(selectQuery, int(sessionID)).Scan(
 		&session.ID,
 		&session.ProjectID,
 		&session.CriterionType,
@@ -107,23 +126,57 @@ func (r *PairwiseRepository) CompleteSession(sessionID int) error {
 
 // CreateComparison creates a new comparison between two features
 func (r *PairwiseRepository) CreateComparison(sessionID, featureAID, featureBID int) (*domain.SessionComparison, error) {
-	query := `
+	// Insert the comparison
+	insertQuery := `
 		INSERT INTO pairwise_comparisons (session_id, feature_a_id, feature_b_id, created_at)
 		VALUES (?, ?, ?, datetime('now'))
-		RETURNING id, session_id, feature_a_id, feature_b_id, winner_id, is_tie, consensus_reached, created_at
+	`
+
+	result, err := r.db.Exec(insertQuery, sessionID, featureAID, featureBID)
+	if err != nil {
+		// Add debug logging
+		fmt.Printf("DEBUG: CreateComparison error: %v, sessionID: %d, featureAID: %d, featureBID: %d\n", err, sessionID, featureAID, featureBID)
+		return nil, err
+	}
+
+	// Get the inserted ID
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve the complete record
+	selectQuery := `
+		SELECT id, session_id, feature_a_id, feature_b_id, winner_id, is_tie, consensus_reached, created_at
+		FROM pairwise_comparisons
+		WHERE id = ?
 	`
 
 	var comparison domain.SessionComparison
-	err := r.db.QueryRow(query, sessionID, featureAID, featureBID).Scan(
+	var winnerID sql.NullInt64
+	var isTie, consensusReached sql.NullBool
+	err = r.db.QueryRow(selectQuery, int(id)).Scan(
 		&comparison.ID,
 		&comparison.SessionID,
 		&comparison.FeatureAID,
 		&comparison.FeatureBID,
-		&comparison.WinnerID,
-		&comparison.IsTie,
-		&comparison.ConsensusReached,
+		&winnerID,
+		&isTie,
+		&consensusReached,
 		&comparison.CreatedAt,
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle nullable fields
+	if winnerID.Valid {
+		winnerVal := int(winnerID.Int64)
+		comparison.WinnerID = &winnerVal
+	}
+	comparison.IsTie = isTie.Valid && isTie.Bool
+	comparison.ConsensusReached = consensusReached.Valid && consensusReached.Bool
 
 	if err != nil {
 		return nil, err
@@ -148,6 +201,7 @@ func (r *PairwiseRepository) GetComparisonsBySessionID(sessionID int) ([]domain.
 
 	rows, err := r.db.Query(query, sessionID)
 	if err != nil {
+		fmt.Printf("DEBUG: GetComparisonsBySessionID query error: %v, sessionID: %d, query: %s\n", err, sessionID, query)
 		return nil, err
 	}
 	defer rows.Close()
@@ -156,15 +210,17 @@ func (r *PairwiseRepository) GetComparisonsBySessionID(sessionID int) ([]domain.
 	for rows.Next() {
 		var comparison domain.SessionComparison
 		var featureA, featureB domain.Feature
+		var winnerID sql.NullInt64
+		var isTie, consensusReached sql.NullBool
 
 		err := rows.Scan(
 			&comparison.ID,
 			&comparison.SessionID,
 			&comparison.FeatureAID,
 			&comparison.FeatureBID,
-			&comparison.WinnerID,
-			&comparison.IsTie,
-			&comparison.ConsensusReached,
+			&winnerID,
+			&isTie,
+			&consensusReached,
 			&comparison.CreatedAt,
 			&featureA.ID,
 			&featureA.Title,
@@ -174,8 +230,17 @@ func (r *PairwiseRepository) GetComparisonsBySessionID(sessionID int) ([]domain.
 			&featureB.Description,
 		)
 		if err != nil {
+			fmt.Printf("DEBUG: GetComparisonsBySessionID scan error: %v, sessionID: %d\n", err, sessionID)
 			return nil, err
 		}
+
+		// Handle nullable fields
+		if winnerID.Valid {
+			winnerVal := int(winnerID.Int64)
+			comparison.WinnerID = &winnerVal
+		}
+		comparison.IsTie = isTie.Valid && isTie.Bool
+		comparison.ConsensusReached = consensusReached.Valid && consensusReached.Bool
 
 		comparison.FeatureA = &featureA
 		comparison.FeatureB = &featureB
@@ -200,15 +265,17 @@ func (r *PairwiseRepository) GetComparisonByID(comparisonID int) (*domain.Sessio
 
 	var comparison domain.SessionComparison
 	var featureA, featureB domain.Feature
+	var winnerID sql.NullInt64
+	var isTie, consensusReached sql.NullBool
 
 	err := r.db.QueryRow(query, comparisonID).Scan(
 		&comparison.ID,
 		&comparison.SessionID,
 		&comparison.FeatureAID,
 		&comparison.FeatureBID,
-		&comparison.WinnerID,
-		&comparison.IsTie,
-		&comparison.ConsensusReached,
+		&winnerID,
+		&isTie,
+		&consensusReached,
 		&comparison.CreatedAt,
 		&featureA.ID,
 		&featureA.Title,
@@ -221,6 +288,14 @@ func (r *PairwiseRepository) GetComparisonByID(comparisonID int) (*domain.Sessio
 		return nil, err
 	}
 
+	// Handle nullable fields
+	if winnerID.Valid {
+		winnerVal := int(winnerID.Int64)
+		comparison.WinnerID = &winnerVal
+	}
+	comparison.IsTie = isTie.Valid && isTie.Bool
+	comparison.ConsensusReached = consensusReached.Valid && consensusReached.Bool
+
 	comparison.FeatureA = &featureA
 	comparison.FeatureB = &featureB
 
@@ -229,14 +304,32 @@ func (r *PairwiseRepository) GetComparisonByID(comparisonID int) (*domain.Sessio
 
 // CreateVote creates a new attendee vote for a comparison
 func (r *PairwiseRepository) CreateVote(vote domain.AttendeeVote) (*domain.AttendeeVote, error) {
-	query := `
+	// First insert the vote
+	insertQuery := `
 		INSERT INTO attendee_votes (comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at)
 		VALUES (?, ?, ?, ?, datetime('now'))
-		RETURNING id, comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at
+	`
+
+	result, err := r.db.Exec(insertQuery, vote.ComparisonID, vote.AttendeeID, vote.PreferredFeatureID, vote.IsTieVote)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the inserted ID
+	voteID, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the created vote
+	selectQuery := `
+		SELECT id, comparison_id, attendee_id, preferred_feature_id, is_tie_vote, voted_at
+		FROM attendee_votes
+		WHERE id = ?
 	`
 
 	var newVote domain.AttendeeVote
-	err := r.db.QueryRow(query, vote.ComparisonID, vote.AttendeeID, vote.PreferredFeatureID, vote.IsTieVote).Scan(
+	err = r.db.QueryRow(selectQuery, int(voteID)).Scan(
 		&newVote.ID,
 		&newVote.ComparisonID,
 		&newVote.AttendeeID,
@@ -401,17 +494,27 @@ func (r *PairwiseRepository) GetVoteByAttendeeAndComparison(comparisonID, attend
 	`
 
 	var vote domain.AttendeeVote
+	var preferredFeatureID sql.NullInt64
 	err := r.db.QueryRow(query, comparisonID, attendeeID).Scan(
 		&vote.ID,
 		&vote.ComparisonID,
 		&vote.AttendeeID,
-		&vote.PreferredFeatureID,
+		&preferredFeatureID,
 		&vote.IsTieVote,
 		&vote.VotedAt,
 	)
 
+	if err == sql.ErrNoRows {
+		return nil, domain.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert sql.NullInt64 to *int
+	if preferredFeatureID.Valid {
+		featureID := int(preferredFeatureID.Int64)
+		vote.PreferredFeatureID = &featureID
 	}
 
 	return &vote, nil

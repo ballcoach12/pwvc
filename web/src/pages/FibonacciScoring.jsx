@@ -337,7 +337,7 @@ const FibonacciScoring = () => {
   }
 
   const criterionLabel = criterionType === 'value' ? 'Value' : 'Complexity'
-  const isSessionComplete = Object.keys(consensusScores).length === features.length
+  const isSessionComplete = Object.keys(consensusScores || {}).length === features.length
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -397,7 +397,7 @@ const FibonacciScoring = () => {
               startIcon={<Download />}
               onClick={handleExportResults}
               size="small"
-              disabled={Object.keys(individualScores).length === 0}
+              disabled={Object.keys(individualScores || {}).length === 0}
             >
               Export
             </Button>

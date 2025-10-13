@@ -6,7 +6,8 @@ export const attendeeService = {
   getAttendees: async (projectId) => {
     try {
       const response = await api.get(`/projects/${projectId}/attendees`)
-      return handleApiResponse(response)
+      const data = handleApiResponse(response)
+      return data.attendees || []
     } catch (error) {
       handleApiError(error)
     }

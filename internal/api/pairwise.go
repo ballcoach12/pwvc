@@ -39,7 +39,7 @@ func (h *Handler) StartPairwiseSession(c *gin.Context) {
 	})
 }
 
-// GetPairwiseSession handles GET /api/projects/:id/pairwise-sessions/:session_id
+// GetPairwiseSession handles GET /api/projects/:id/pairwise
 func (h *Handler) GetPairwiseSession(c *gin.Context) {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -49,25 +49,19 @@ func (h *Handler) GetPairwiseSession(c *gin.Context) {
 		return
 	}
 
-	sessionID, err := strconv.Atoi(c.Param("session_id"))
-	if err != nil {
+	// Get query parameter for criterion type (default to complexity)
+	criterionType := c.DefaultQuery("type", "complexity")
+	if criterionType != "value" && criterionType != "complexity" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid session ID",
+			"error": "Invalid criterion type. Must be 'value' or 'complexity'",
 		})
 		return
 	}
 
-	session, progress, err := h.pairwiseService.GetSession(sessionID)
+	// Get active session for the project and criterion
+	session, progress, err := h.pairwiseService.GetActiveSession(projectID, domain.CriterionType(criterionType))
 	if err != nil {
 		handleServiceError(c, err)
-		return
-	}
-
-	// Verify session belongs to the project
-	if session.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Session not found",
-		})
 		return
 	}
 
@@ -77,7 +71,7 @@ func (h *Handler) GetPairwiseSession(c *gin.Context) {
 	})
 }
 
-// GetPairwiseSessionComparisons handles GET /api/projects/:id/pairwise-sessions/:session_id/comparisons
+// GetPairwiseSessionComparisons handles GET /api/projects/:id/pairwise/comparisons
 func (h *Handler) GetPairwiseSessionComparisons(c *gin.Context) {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -87,29 +81,23 @@ func (h *Handler) GetPairwiseSessionComparisons(c *gin.Context) {
 		return
 	}
 
-	sessionID, err := strconv.Atoi(c.Param("session_id"))
-	if err != nil {
+	// Get query parameter for criterion type (default to complexity)
+	criterionType := c.DefaultQuery("type", "complexity")
+	if criterionType != "value" && criterionType != "complexity" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid session ID",
+			"error": "Invalid criterion type. Must be 'value' or 'complexity'",
 		})
 		return
 	}
 
-	// Verify session belongs to the project first
-	session, _, err := h.pairwiseService.GetSession(sessionID)
+	// Get active session for the project and criterion
+	session, _, err := h.pairwiseService.GetActiveSession(projectID, domain.CriterionType(criterionType))
 	if err != nil {
 		handleServiceError(c, err)
 		return
 	}
 
-	if session.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Session not found",
-		})
-		return
-	}
-
-	comparisons, err := h.pairwiseService.GetSessionComparisons(sessionID)
+	comparisons, err := h.pairwiseService.GetSessionComparisons(session.ID)
 	if err != nil {
 		handleServiceError(c, err)
 		return
@@ -130,13 +118,24 @@ func (h *Handler) SubmitPairwiseVote(c *gin.Context) {
 		return
 	}
 
-	sessionID, err := strconv.Atoi(c.Param("session_id"))
-	if err != nil {
+	// Get query parameter for criterion type (default to complexity)
+	criterionType := c.DefaultQuery("type", "complexity")
+	if criterionType != "value" && criterionType != "complexity" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid session ID",
+			"error": "Invalid criterion type. Must be 'value' or 'complexity'",
 		})
 		return
 	}
+
+	// Get the current active session for the project
+	session, _, err := h.pairwiseService.GetActiveSession(projectID, domain.CriterionType(criterionType))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "No active pairwise session found",
+		})
+		return
+	}
+	sessionID := session.ID
 
 	var req domain.SubmitVoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -147,19 +146,7 @@ func (h *Handler) SubmitPairwiseVote(c *gin.Context) {
 		return
 	}
 
-	// Verify session belongs to the project first
-	session, _, err := h.pairwiseService.GetSession(sessionID)
-	if err != nil {
-		handleServiceError(c, err)
-		return
-	}
-
-	if session.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Session not found",
-		})
-		return
-	}
+	// Session is already verified as belonging to the project from GetActiveSession above
 
 	vote, err := h.pairwiseService.SubmitVote(sessionID, req)
 	if err != nil {

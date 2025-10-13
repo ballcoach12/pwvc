@@ -1,19 +1,19 @@
 import {
-    CheckCircle,
-    Group,
-    RadioButtonUnchecked,
-    Timer
+  CheckCircle,
+  Group,
+  RadioButtonUnchecked,
+  Timer
 } from '@mui/icons-material'
 import {
-    Badge,
-    Box,
-    Card,
-    CardContent,
-    Chip,
-    Grid,
-    LinearProgress,
-    Paper,
-    Typography
+  Badge,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  LinearProgress,
+  Paper,
+  Typography
 } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { useWebSocket } from '../services/websocketService'
@@ -34,10 +34,15 @@ const PairwiseGrid = ({
   projectId, 
   features = [], 
   attendees = [],
+  comparisons: propComparisons = [],
   currentComparison = null,
   onComparisonSelect,
   onVoteSubmit 
 }) => {
+  // Ensure arrays are always arrays with defensive programming
+  const safeFeatures = Array.isArray(features) ? features : []
+  const safeAttendees = Array.isArray(attendees) ? attendees : []
+  
   const [comparisons, setComparisons] = useState([])
   const [gridData, setGridData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -54,41 +59,48 @@ const PairwiseGrid = ({
   // Generate all pairwise comparisons from features
   const generateComparisons = useCallback(() => {
     const pairs = []
-    for (let i = 0; i < features.length; i++) {
-      for (let j = i + 1; j < features.length; j++) {
+    for (let i = 0; i < safeFeatures.length; i++) {
+      for (let j = i + 1; j < safeFeatures.length; j++) {
+        // Safety check: ensure features have valid id properties
+        if (!safeFeatures[i]?.id || !safeFeatures[j]?.id) {
+          console.warn('Invalid feature objects found:', safeFeatures[i], safeFeatures[j])
+          continue
+        }
+        
         pairs.push({
-          id: `${features[i].id}-${features[j].id}`,
-          featureA: features[i],
-          featureB: features[j],
+          id: `${safeFeatures[i].id}-${safeFeatures[j].id}`,
+          featureA: safeFeatures[i],
+          featureB: safeFeatures[j],
           position: { row: i, col: j },
-          votes: votes[`${features[i].id}-${features[j].id}`] || {},
-          hasConsensus: consensus[`${features[i].id}-${features[j].id}`] || false,
-          totalVotes: Object.keys(votes[`${features[i].id}-${features[j].id}`] || {}).length,
-          requiredVotes: attendees.length
+          votes: votes?.[`${safeFeatures[i].id}-${safeFeatures[j].id}`] || {},
+          hasConsensus: consensus?.[`${safeFeatures[i].id}-${safeFeatures[j].id}`] || false,
+          totalVotes: Object.keys(votes?.[`${safeFeatures[i].id}-${safeFeatures[j].id}`] || {}).length,
+          requiredVotes: safeAttendees.length
         })
       }
     }
     return pairs
-  }, [features, votes, consensus, attendees.length])
+  }, [safeFeatures, votes, consensus, safeAttendees.length])
 
   // Create grid data structure for matrix display
   const createGridData = useCallback(() => {
     const grid = []
-    for (let i = 0; i < features.length; i++) {
+    for (let i = 0; i < safeFeatures.length; i++) {
       const row = []
-      for (let j = 0; j < features.length; j++) {
+      for (let j = 0; j < safeFeatures.length; j++) {
         if (i === j) {
           // Diagonal cell - feature vs itself
           row.push({
             type: 'feature',
-            feature: features[i],
+            feature: safeFeatures[i] || { id: `unknown-${i}`, title: 'Unknown Feature' },
             position: { row: i, col: j }
           })
         } else if (i < j) {
           // Upper triangle - actual comparisons
-          const comparison = comparisons.find(c => 
-            c.position.row === i && c.position.col === j
-          )
+          const comparison = Array.isArray(comparisons) ? 
+            comparisons.find(c => 
+              c?.position?.row === i && c?.position?.col === j
+            ) : null
           row.push({
             type: 'comparison',
             comparison,
@@ -105,20 +117,48 @@ const PairwiseGrid = ({
       grid.push(row)
     }
     return grid
-  }, [features, comparisons])
+  }, [safeFeatures, comparisons])
 
-  // Initialize comparisons and grid
+  // Initialize comparisons when features change or prop comparisons are provided
   useEffect(() => {
-    if (features.length > 0) {
-      const newComparisons = generateComparisons()
-      setComparisons(newComparisons)
-      
-      const newGridData = createGridData()
-      setGridData(newGridData)
-      
+    if (safeFeatures.length > 0) {
+      if (propComparisons && propComparisons.length > 0) {
+        console.log('DEBUG: Using API comparisons:', propComparisons)
+        console.log('DEBUG: Available features:', safeFeatures)
+        // Use API comparisons if available, mapping them to the expected format
+        const mappedComparisons = propComparisons.map(apiComp => ({
+          id: apiComp.comparison.id,
+          featureA: apiComp.comparison.feature_a,
+          featureB: apiComp.comparison.feature_b,
+          position: { 
+            row: safeFeatures.findIndex(f => f.id === apiComp.comparison.feature_a_id),
+            col: safeFeatures.findIndex(f => f.id === apiComp.comparison.feature_b_id)
+          },
+          votes: apiComp.votes || [],
+          hasConsensus: apiComp.comparison.consensus_reached || false,
+          totalVotes: apiComp.votes ? apiComp.votes.length : 0,
+          requiredVotes: safeAttendees.length,
+          consensus_reached: apiComp.comparison.consensus_reached,
+          created_at: apiComp.comparison.created_at
+        }))
+        console.log('DEBUG: Mapped comparisons:', mappedComparisons)
+        setComparisons(mappedComparisons)
+      } else {
+        // Fallback to local generation
+        const newComparisons = generateComparisons()
+        setComparisons(newComparisons)
+      }
       setLoading(false)
     }
-  }, [generateComparisons, createGridData, features])
+  }, [safeFeatures.length, safeAttendees.length, propComparisons])
+
+  // Update grid data when comparisons change
+  useEffect(() => {
+    if (comparisons.length > 0) {
+      const newGridData = createGridData()
+      setGridData(newGridData)
+    }
+  }, [comparisons, createGridData])
 
   // Join WebSocket session
   useEffect(() => {
@@ -129,8 +169,13 @@ const PairwiseGrid = ({
 
   // Handle comparison cell click
   const handleComparisonClick = (comparison) => {
+    console.log('DEBUG: Comparison clicked:', comparison)
+    console.log('DEBUG: onComparisonSelect function:', onComparisonSelect)
     if (comparison && onComparisonSelect) {
+      console.log('DEBUG: Calling onComparisonSelect with:', comparison)
       onComparisonSelect(comparison)
+    } else {
+      console.log('DEBUG: Click not processed - comparison:', !!comparison, 'onComparisonSelect:', !!onComparisonSelect)
     }
   }
 
@@ -173,7 +218,7 @@ const PairwiseGrid = ({
     >
       <CardContent sx={{ p: 1, textAlign: 'center' }}>
         <Typography variant="body2" fontWeight="bold">
-          {feature.name}
+          {feature.title || feature.name}
         </Typography>
         <Typography variant="caption" sx={{ opacity: 0.8 }}>
           ID: {feature.id}
@@ -219,7 +264,7 @@ const PairwiseGrid = ({
               </Box>
               
               <Typography variant="caption" display="block">
-                {comparison.featureA.name} vs {comparison.featureB.name}
+                {comparison.featureA.title || comparison.featureA.name} vs {comparison.featureB.title || comparison.featureB.name}
               </Typography>
               
               <Box sx={{ mt: 0.5 }}>
@@ -301,7 +346,7 @@ const PairwiseGrid = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip
               icon={<Group />}
-              label={`${Object.keys(attendeeStatus).length} attendees`}
+              label={`${safeAttendees.length} attendees`}
               color={isConnected ? 'success' : 'error'}
               variant="outlined"
               size="small"

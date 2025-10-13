@@ -1,16 +1,16 @@
 import { Add, ArrowForward, PersonAdd } from '@mui/icons-material'
 import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardActions,
-    CardContent,
-    Checkbox,
-    CircularProgress,
-    FormControlLabel,
-    TextField,
-    Typography
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Checkbox,
+  CircularProgress,
+  FormControlLabel,
+  TextField,
+  Typography
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -88,7 +88,7 @@ const AttendeeManagement = () => {
     } else {
       // Check for duplicate email
       const existingAttendee = attendees.find(
-        a => a.email.toLowerCase() === formData.email.trim().toLowerCase()
+        a => a && a.email && a.email.toLowerCase() === formData.email.trim().toLowerCase()
       )
       if (existingAttendee) {
         newErrors.email = 'This email is already added to the project'

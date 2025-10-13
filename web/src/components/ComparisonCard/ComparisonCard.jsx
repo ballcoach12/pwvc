@@ -51,7 +51,31 @@ const ComparisonCard = ({
   const winner = getWinner()
 
   const handleVote = (choice) => {
-    if (disabled || consensusReached) return
+    console.log('ComparisonCard handleVote called:', {
+      choice,
+      disabled,
+      consensusReached,
+      currentAttendee,
+      onVote: typeof onVote,
+      comparisonId: comparison.id
+    })
+    
+    if (disabled || consensusReached) {
+      console.log('Vote blocked:', { disabled, consensusReached })
+      return
+    }
+    
+    if (!onVote) {
+      console.error('onVote callback not provided')
+      return
+    }
+    
+    if (!currentAttendee) {
+      console.error('No current attendee selected')
+      return
+    }
+    
+    console.log('Calling onVote with:', comparison.id, choice)
     onVote(comparison.id, choice)
   }
 

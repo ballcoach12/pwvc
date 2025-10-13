@@ -63,7 +63,7 @@ const FeatureManagement = () => {
         featureService.getFeatures(id)
       ])
       setProject(projectData)
-      setFeatures(featuresData.features || [])
+      setFeatures(featuresData || [])
     } catch (err) {
       enqueueSnackbar(err.message || 'Failed to load project data', { variant: 'error' })
       navigate('/projects')

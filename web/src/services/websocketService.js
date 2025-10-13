@@ -27,7 +27,19 @@ class PairWiseWebSocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        const wsUrl = `ws://localhost:8080/ws/${sessionType}/${projectId}/${sessionId}?attendeeId=${attendeeId}`
+        // Determine WebSocket URL based on environment
+        let wsBaseUrl
+        if (import.meta.env.VITE_WS_URL) {
+          wsBaseUrl = import.meta.env.VITE_WS_URL
+        } else if (import.meta.env.DEV) {
+          wsBaseUrl = 'ws://localhost:8080/ws'
+        } else {
+          // In production, use the current host with ws/wss protocol
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+          wsBaseUrl = `${protocol}//${window.location.host}/ws`
+        }
+        
+        const wsUrl = `${wsBaseUrl}/${sessionType}/${projectId}/${sessionId}?attendeeId=${attendeeId}`
         this.ws = new WebSocket(wsUrl)
 
         this.ws.onopen = () => {

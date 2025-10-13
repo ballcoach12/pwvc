@@ -98,11 +98,33 @@ func (s *PairwiseService) generateComparisons(sessionID int, features []domain.F
 		for j := i + 1; j < len(features); j++ {
 			_, err := s.pairwiseRepo.CreateComparison(sessionID, features[i].ID, features[j].ID)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create comparison between feature %d and %d: %w", features[i].ID, features[j].ID, err)
 			}
 		}
 	}
 	return nil
+}
+
+// GetActiveSession retrieves the active pairwise session for a project and criterion
+func (s *PairwiseService) GetActiveSession(projectID int, criterionType domain.CriterionType) (*domain.PairwiseSession, *domain.SessionProgress, error) {
+	if projectID <= 0 {
+		return nil, nil, domain.NewAPIError(400, "Invalid project ID")
+	}
+
+	session, err := s.pairwiseRepo.GetActiveSessionByProjectAndCriterion(projectID, criterionType)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return nil, nil, domain.NewAPIError(404, "No active session found")
+		}
+		return nil, nil, domain.NewAPIError(500, "Failed to get active session", err.Error())
+	}
+
+	progress, err := s.pairwiseRepo.GetSessionProgress(session.ID)
+	if err != nil {
+		return session, nil, nil // Return session even if progress calculation fails
+	}
+
+	return session, progress, nil
 }
 
 // GetSession retrieves a pairwise session with progress information

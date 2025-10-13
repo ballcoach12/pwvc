@@ -1,53 +1,92 @@
 import {
-    AccessTime,
-    CheckCircle,
-    ExpandLess,
-    ExpandMore,
-    Group,
-    Pause,
-    PlayArrow,
-    Timeline,
+  AccessTime,
+  CheckCircle,
+  ExpandLess,
+  ExpandMore,
+  Group,
+  Pause,
+  PlayArrow,
+  Timeline,
 } from '@mui/icons-material'
 import {
-    Avatar,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Collapse,
-    Divider,
-    IconButton,
-    LinearProgress,
-    List,
-    ListItem,
-    ListItemAvatar,
-    ListItemText,
-    Typography,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Collapse,
+  Divider,
+  IconButton,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Typography,
 } from '@mui/material'
 import React, { useEffect, useState } from 'react'
 
-const SessionProgress = ({
-  session,
-  attendees = [],
-  comparisons = [],
-  currentAttendee,
-  onNextComparison,
-  onPauseSession,
-  onResumeSession,
-}) => {
+const SessionProgress = (props) => {
+  // Extract props with maximum safety and flexibility to handle multiple interfaces
+  const {
+    session,
+    attendees: propAttendees,
+    comparisons: propComparisons,
+    currentAttendee,
+    onNextComparison,
+    onPauseSession,
+    onResumeSession,
+    // Legacy/alternative props from PairwiseComparison component
+    totalComparisons: propTotalComparisons,
+    completedComparisons: propCompletedComparisons,
+    attendeeStatus,
+    isConnected,
+    currentComparison,
+    onAttendeeSelect,
+    ...otherProps
+  } = props
+
+  // Ensure arrays are always arrays with maximum defensive programming
+  // Handle both new interface (attendees/comparisons) and legacy interface (attendees only)
+  const safeAttendees = Array.isArray(propAttendees) ? propAttendees : []
+  const safeComparisons = Array.isArray(propComparisons) ? propComparisons : []
+  
+  // If we're using the legacy interface, create mock comparisons data
+  const hasLegacyInterface = propTotalComparisons !== undefined || propCompletedComparisons !== undefined
+
   const [expanded, setExpanded] = useState(false)
   const [sessionTime, setSessionTime] = useState(0)
 
-  // Calculate progress statistics
-  const totalComparisons = comparisons.length
-  const completedComparisons = comparisons.filter(c => c.status === 'completed').length
+  // Calculate progress statistics - handle both interfaces
+  const totalComparisons = hasLegacyInterface ? 
+    (propTotalComparisons || 0) : 
+    safeComparisons.length
+    
+  const completedComparisons = hasLegacyInterface ? 
+    (propCompletedComparisons || 0) : 
+    safeComparisons.filter(c => c.status === 'completed').length
+    
   const overallProgress = totalComparisons > 0 ? (completedComparisons / totalComparisons) * 100 : 0
 
   // Calculate individual attendee progress
   const getAttendeeProgress = (attendeeId) => {
-    const attendeeVotes = comparisons.reduce((count, comparison) => {
-      const hasVoted = comparison.votes?.some(v => v.attendeeId === attendeeId)
+    if (hasLegacyInterface) {
+      // For legacy interface, use attendeeStatus if available
+      if (attendeeStatus && attendeeStatus[attendeeId]) {
+        return attendeeStatus[attendeeId].progress || 0
+      }
+      // Fallback to estimated progress
+      return overallProgress
+    }
+    
+    if (safeComparisons.length === 0) {
+      return 0
+    }
+    
+    const attendeeVotes = safeComparisons.reduce((count, comparison) => {
+      const hasVoted = Array.isArray(comparison.votes) && 
+        comparison.votes.some(v => v.attendeeId === attendeeId)
       return hasVoted ? count + 1 : count
     }, 0)
     return totalComparisons > 0 ? (attendeeVotes / totalComparisons) * 100 : 0
@@ -55,9 +94,18 @@ const SessionProgress = ({
 
   // Get next comparison for current attendee
   const getNextComparison = () => {
-    return comparisons.find(c => 
+    if (hasLegacyInterface) {
+      // For legacy interface, use currentComparison prop
+      return currentComparison || null
+    }
+    
+    if (!currentAttendee?.id) {
+      return null
+    }
+    
+    return safeComparisons.find(c => 
       c.status !== 'completed' && 
-      !c.votes?.some(v => v.attendeeId === currentAttendee?.id)
+      (!Array.isArray(c.votes) || !c.votes.some(v => v.attendeeId === currentAttendee.id))
     )
   }
 
@@ -162,7 +210,7 @@ const SessionProgress = ({
                 fullWidth
                 size="large"
               >
-                Continue Voting ({totalComparisons - getAttendeeProgress(currentAttendee.id) / 100 * totalComparisons} remaining)
+                Continue Voting ({totalComparisons - Math.round(getAttendeeProgress(currentAttendee.id) / 100 * totalComparisons)} remaining)
               </Button>
             ) : (
               <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
@@ -183,7 +231,7 @@ const SessionProgress = ({
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Group fontSize="small" />
-              Attendee Progress ({attendees.length})
+              Attendee Progress ({safeAttendees.length})
             </Typography>
             <IconButton size="small" onClick={() => setExpanded(!expanded)}>
               {expanded ? <ExpandLess /> : <ExpandMore />}
@@ -192,7 +240,7 @@ const SessionProgress = ({
 
           <Collapse in={expanded}>
             <List dense>
-              {(attendees || []).map((attendee, index) => {
+              {safeAttendees && safeAttendees.length > 0 ? safeAttendees.map((attendee, index) => {
                 const progress = getAttendeeProgress(attendee.id)
                 const votedCount = Math.round((progress / 100) * totalComparisons)
                 const isComplete = progress === 100
@@ -260,10 +308,17 @@ const SessionProgress = ({
                         )}
                       </Box>
                     </ListItem>
-                    {index < attendees.length - 1 && <Divider />}
+                    {index < safeAttendees.length - 1 && <Divider />}
                   </React.Fragment>
                 )
-              })}
+              }) : (
+                <ListItem>
+                  <ListItemText 
+                    primary="No attendees available" 
+                    secondary="Attendee data not loaded"
+                  />
+                </ListItem>
+              )}
             </List>
           </Collapse>
         </Box>

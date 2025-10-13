@@ -1,35 +1,35 @@
 import {
-    ArrowBack,
-    Download,
-    Fullscreen,
-    FullscreenExit,
-    GridView,
-    Help,
-    NavigateBefore,
-    NavigateNext,
-    Settings,
-    ViewList
+  ArrowBack,
+  Download,
+  Fullscreen,
+  FullscreenExit,
+  GridView,
+  Help,
+  NavigateBefore,
+  NavigateNext,
+  Settings,
+  ViewList
 } from '@mui/icons-material'
 import {
-    Alert,
-    AppBar,
-    Box,
-    Breadcrumbs,
-    Button,
-    Container,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Fab,
-    FormControlLabel,
-    Grid,
-    IconButton,
-    Link,
-    Snackbar,
-    Switch,
-    Toolbar,
-    Typography
+  Alert,
+  AppBar,
+  Box,
+  Breadcrumbs,
+  Button,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Fab,
+  FormControlLabel,
+  Grid,
+  IconButton,
+  Link,
+  Snackbar,
+  Switch,
+  Toolbar,
+  Typography
 } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -61,6 +61,7 @@ import pairwiseWebSocketService, { useWebSocket } from '../services/websocketSer
  * - Fullscreen mode for focused voting
  */
 const PairwiseComparison = () => {
+  // Router hooks
   const { projectId } = useParams()
   const navigate = useNavigate()
   
@@ -92,6 +93,20 @@ const PairwiseComparison = () => {
     joinSession,
     leaveSession
   } = useWebSocket(projectId)
+
+  // Debug logging for attendee selection
+  useEffect(() => {
+    console.log('Current attendee state:', currentAttendee)
+    console.log('Available attendees:', attendees)
+  }, [currentAttendee, attendees])
+
+  // Auto-select first attendee if none is selected and attendees are available
+  useEffect(() => {
+    if (!currentAttendee && attendees && attendees.length > 0) {
+      console.log('Auto-selecting first attendee:', attendees[0])
+      setCurrentAttendee(attendees[0])
+    }
+  }, [attendees, currentAttendee])
 
   // WebSocket event listeners
   useEffect(() => {
@@ -145,43 +160,116 @@ const PairwiseComparison = () => {
 
   const [comparisons, setComparisons] = useState([])
 
-  // Update comparisons when data changes
+  // Load comparisons from backend API
   useEffect(() => {
-    if (!features || features.length < 2) {
-      setComparisons([])
-      return
-    }
+    const loadComparisons = async () => {
+      if (!projectId || !sessionStarted) return
 
-    // Generate all pairwise comparisons
-    const pairs = []
-    for (let i = 0; i < features.length; i++) {
-      for (let j = i + 1; j < features.length; j++) {
-        const comparisonId = `${features[i].id}-${features[j].id}`
-        pairs.push({
-          id: comparisonId,
-          featureA: features[i],
-          featureB: features[j],
-          votes: votes[comparisonId] || {},
-          hasConsensus: consensus[comparisonId] || false,
-          index: pairs.length
-        })
+      try {
+        console.log('Loading comparisons for project:', projectId)
+        const comparisonsData = await pairwiseService.getComparisons(projectId)
+        console.log('Loaded comparisons:', comparisonsData)
+        
+        if (comparisonsData && comparisonsData.comparisons) {
+          setComparisons(comparisonsData.comparisons)
+          
+          // Set initial comparison if none selected
+          if (!currentComparison && comparisonsData.comparisons.length > 0) {
+            const firstIncomplete = comparisonsData.comparisons.find(c => !c.consensus_reached)
+            setCurrentComparison(firstIncomplete || comparisonsData.comparisons[0])
+          }
+        } else {
+          console.log('No comparisons found, using fallback generation')
+          // Fallback: generate comparisons locally if API doesn't have them
+          generateLocalComparisons()
+        }
+      } catch (error) {
+        console.error('Failed to load comparisons:', error)
+        console.log('Using fallback generation due to error')
+        // Fallback to local generation if API fails
+        generateLocalComparisons()
       }
     }
 
-    setComparisons(pairs)
-    
-    // Set initial comparison if none selected
-    if (!currentComparison && pairs.length > 0) {
-      const firstIncomplete = pairs.find(c => !c.hasConsensus)
-      setCurrentComparison(firstIncomplete || pairs[0])
+    const generateLocalComparisons = () => {
+      if (!features || features.length < 2) {
+        setComparisons([])
+        return
+      }
+
+      // Generate all pairwise comparisons locally as fallback
+      const pairs = []
+      for (let i = 0; i < features.length; i++) {
+        for (let j = i + 1; j < features.length; j++) {
+          const comparisonId = `${features[i].id}-${features[j].id}`
+          pairs.push({
+            id: comparisonId,
+            featureA: features[i],
+            featureB: features[j],
+            votes: votes[comparisonId] || {},
+            hasConsensus: consensus[comparisonId] || false,
+            index: pairs.length
+          })
+        }
+      }
+
+      setComparisons(pairs)
+      
+      // Set initial comparison if none selected
+      if (!currentComparison && pairs.length > 0) {
+        const firstIncomplete = pairs.find(c => !c.hasConsensus)
+        setCurrentComparison(firstIncomplete || pairs[0])
+      }
     }
-  }, [features, votes, consensus, currentComparison])
+
+    loadComparisons()
+  }, [projectId, sessionStarted, features])
+
+  // Initialize pairwise session
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (!projectId || !features || features.length < 2) return
+
+      try {
+        // Try to get existing session first
+        const existingSession = await pairwiseService.getSession(projectId)
+        console.log('Existing session found:', existingSession)
+        setSessionStarted(true)
+      } catch (error) {
+        console.log('No existing session, creating new one...')
+        try {
+          // Create new complexity session
+          const newSession = await pairwiseService.startSession(projectId, {
+            criterion_type: 'complexity'
+          })
+          console.log('Created new session:', newSession)
+          setSessionStarted(true)
+        } catch (sessionError) {
+          console.error('Failed to create session:', sessionError)
+          // Check if session was created anyway (backend may return error even on partial success)
+          try {
+            const sessionAfterError = await pairwiseService.getSession(projectId)
+            console.log('Session exists despite creation error:', sessionAfterError)
+            setSessionStarted(true)
+          } catch (finalError) {
+            console.error('No session found after creation attempt:', finalError)
+            setNotification({
+              open: true,
+              message: 'Failed to start pairwise session',
+              severity: 'error'
+            })
+          }
+        }
+      }
+    }
+
+    initializeSession()
+  }, [projectId, features])
 
   // Join session on component mount
   useEffect(() => {
-    if (projectId && isConnected) {
+    if (projectId && isConnected && sessionStarted) {
       joinSession(projectId)
-      setSessionStarted(true)
     }
     
     return () => {
@@ -189,7 +277,7 @@ const PairwiseComparison = () => {
         leaveSession(projectId)
       }
     }
-  }, [projectId, isConnected, joinSession, leaveSession])
+  }, [projectId, isConnected, sessionStarted, joinSession, leaveSession])
 
   // Navigation functions
   const navigateToNext = () => {
@@ -211,11 +299,17 @@ const PairwiseComparison = () => {
   // Vote handling
   const handleVote = async (comparisonId, choice, attendeeId) => {
     try {
-      // Send vote via WebSocket for real-time updates
-      sendVote(comparisonId, choice, attendeeId)
+      // Try to send vote via WebSocket for real-time updates (optional)
+      try {
+        sendVote(comparisonId, choice, attendeeId)
+        console.log('WebSocket vote sent successfully')
+      } catch (wsError) {
+        console.warn('WebSocket vote failed, continuing with API call:', wsError.message)
+      }
       
-      // Also persist to backend
+      // Always persist to backend API (required)
       await pairwiseService.submitVote(projectId, comparisonId, attendeeId, choice)
+      console.log('API vote submitted successfully')
       
       showNotification('Vote submitted successfully', 'success')
       
@@ -461,8 +555,12 @@ const PairwiseComparison = () => {
                 projectId={projectId}
                 features={features}
                 attendees={attendees}
+                comparisons={comparisons}
                 currentComparison={currentComparison}
-                onComparisonSelect={setCurrentComparison}
+                onComparisonSelect={(comparison) => {
+                  setCurrentComparison(comparison)
+                  setViewMode('detail')
+                }}
                 onVoteSubmit={handleVote}
               />
             </Grid>
@@ -475,6 +573,21 @@ const PairwiseComparison = () => {
                     votes={currentComparison.votes}
                     attendees={attendees}
                     hasConsensus={currentComparison.hasConsensus}
+                    currentAttendee={currentAttendee}
+                    onVote={(comparisonId, choice) => {
+                      console.log('PairwiseComparison onVote called:', {
+                        comparisonId,
+                        choice,
+                        currentAttendee,
+                        hasCurrentAttendee: !!currentAttendee
+                      })
+                      
+                      if (currentAttendee) {
+                        handleVote(comparisonId, choice, currentAttendee.id)
+                      } else {
+                        console.error('No attendee selected - cannot vote')
+                      }
+                    }}
                   />
                 )}
               </Grid>

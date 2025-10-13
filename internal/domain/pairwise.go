@@ -30,6 +30,11 @@ type PairwiseSession struct {
 	CompletedAt   *time.Time    `json:"completed_at,omitempty" db:"completed_at"`
 }
 
+// TableName returns the table name for GORM
+func (PairwiseSession) TableName() string {
+	return "pairwise_sessions"
+}
+
 // SessionComparison represents a comparison between two features in a session
 type SessionComparison struct {
 	ID               int       `json:"id" db:"id"`
@@ -47,6 +52,11 @@ type SessionComparison struct {
 	Winner   *Feature `json:"winner,omitempty"`
 }
 
+// TableName returns the table name for GORM
+func (SessionComparison) TableName() string {
+	return "pairwise_comparisons"
+}
+
 // AttendeeVote represents an individual attendee's vote for a comparison
 type AttendeeVote struct {
 	ID                 int       `json:"id" db:"id"`
@@ -59,6 +69,11 @@ type AttendeeVote struct {
 	// Populated via joins
 	Attendee         *Attendee `json:"attendee,omitempty"`
 	PreferredFeature *Feature  `json:"preferred_feature,omitempty"`
+}
+
+// TableName returns the table name for GORM
+func (AttendeeVote) TableName() string {
+	return "attendee_votes"
 }
 
 // SessionProgress represents the progress of a pairwise session

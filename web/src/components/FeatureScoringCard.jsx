@@ -87,11 +87,11 @@ const FeatureScoringCard = ({
 
   // Calculate scoring progress
   const totalAttendes = attendees.length
-  const scoredAttendees = Object.keys(scores).length
+  const scoredAttendees = Object.keys(scores || {}).length
   const progressPercentage = totalAttendes > 0 ? (scoredAttendees / totalAttendes) * 100 : 0
 
   // Get unique scores for consensus analysis
-  const uniqueScores = [...new Set(Object.values(scores))]
+  const uniqueScores = [...new Set(Object.values(scores || {}))]
   const isConsensusClose = uniqueScores.length <= 2 && uniqueScores.length > 0
 
   // Format criterion type for display
