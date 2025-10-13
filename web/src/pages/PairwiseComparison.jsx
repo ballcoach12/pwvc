@@ -33,6 +33,7 @@ import {
 } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import AttendeeLoginDialog from '../components/AttendeeLoginDialog/AttendeeLoginDialog'
 import AttendeeVotingPanel from '../components/AttendeeVotingPanel/AttendeeVotingPanel'
 import ComparisonCard from '../components/ComparisonCard/ComparisonCard'
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog'
@@ -42,8 +43,7 @@ import { useAttendees } from '../hooks/useAttendees'
 import { useFeatures } from '../hooks/useFeatures'
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts'
 import { useProject } from '../hooks/useProject'
-import { pairwiseService, api } from '../services/api'
-import AttendeeLoginDialog from '../components/AttendeeLoginDialog/AttendeeLoginDialog'
+import { api, pairwiseService } from '../services/api'
 import pairwiseWebSocketService, { useWebSocket } from '../services/websocketService'
 
 /**
