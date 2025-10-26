@@ -57,9 +57,12 @@ func (h *Handler) LoginAttendee(c *gin.Context) {
 		return
 	}
 
-	// Verify PIN (simple hash comparison for now)
+	// Debug logging
 	hashedPIN := hashPIN(req.PIN)
-	if attendee.PIN != hashedPIN {
+	fmt.Printf("DEBUG: Attendee ID %d, PinHash from DB: '%s', Computed hash: '%s'\n", attendee.ID, attendee.PinHash, hashedPIN)
+
+	// Verify PIN (simple hash comparison for now)
+	if attendee.PinHash != hashedPIN {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid PIN",
 		})

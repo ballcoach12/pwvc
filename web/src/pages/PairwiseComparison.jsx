@@ -16,6 +16,8 @@ import {
   Box,
   Breadcrumbs,
   Button,
+  Card,
+  CardContent,
   Container,
   Dialog,
   DialogActions,
@@ -129,6 +131,11 @@ const PairwiseComparison = () => {
       api.auth.setCurrentAttendee(response.attendee, response.token)
       setCurrentAttendee(response.attendee)
       setLoginDialogOpen(false)
+      
+      // If there's a selected comparison, switch to detail view
+      if (currentComparison && viewMode === 'grid') {
+        setViewMode('detail')
+      }
       
       showNotification(`Welcome, ${response.attendee.name}!`, 'success')
     } catch (error) {
@@ -587,8 +594,14 @@ const PairwiseComparison = () => {
                 comparisons={comparisons}
                 currentComparison={currentComparison}
                 onComparisonSelect={(comparison) => {
-                  setCurrentComparison(comparison)
-                  setViewMode('detail')
+                  // Check authentication before switching to detail view
+                  if (!api.auth.isAuthenticated() || !currentAttendee) {
+                    setCurrentComparison(comparison)
+                    setLoginDialogOpen(true)
+                  } else {
+                    setCurrentComparison(comparison)
+                    setViewMode('detail')
+                  }
                 }}
                 onVoteSubmit={handleVote}
               />
@@ -596,7 +609,7 @@ const PairwiseComparison = () => {
           ) : (
             <>
               <Grid item xs={12} md={6}>
-                {currentComparison && (
+                {currentComparison && currentAttendee && api.auth.isAuthenticated() && (
                   <ComparisonCard
                     comparison={currentComparison}
                     votes={currentComparison.votes}
@@ -628,11 +641,32 @@ const PairwiseComparison = () => {
                     }}
                   />
                 )}
+                
+                {/* Show authentication prompt if not authenticated */}
+                {currentComparison && (!currentAttendee || !api.auth.isAuthenticated()) && (
+                  <Card sx={{ p: 3, textAlign: 'center' }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Authentication Required
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Please log in to view and vote on feature comparisons.
+                      </Typography>
+                      <Button 
+                        variant="contained" 
+                        onClick={() => setLoginDialogOpen(true)}
+                        sx={{ mt: 1 }}
+                      >
+                        Login
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
               </Grid>
 
               {/* Right Panel - Voting */}
               <Grid item xs={12} md={3}>
-                {currentComparison && currentAttendee && (
+                {currentComparison && currentAttendee && api.auth.isAuthenticated() && (
                   <AttendeeVotingPanel
                     comparison={currentComparison}
                     attendee={currentAttendee}
