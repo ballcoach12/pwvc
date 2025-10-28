@@ -81,8 +81,12 @@ go vet ./...
 - `go build .` - Build executable
 
 ## Active Technologies
+
 - Go 1.23.x backend; React + Vite frontend (Node 18+) + gin-gonic/gin, gorilla/websocket, lib/pq, gorm (sqlite in tests); React, Vite, Vitest (001-zero-doubt-prioritization)
-- PostgreSQL (prod), SQLite (tests) (001-zero-doubt-prioritization)
+- SQLite with GORM AutoMigrate (development and production) (001-zero-doubt-prioritization)
+- Go 1.23.3 (backend), React 18.2.0 (frontend) + Gin (Go web framework), Material-UI, Axios, React Router (001-jwt-auth-system)
+- SQLite with GORM AutoMigrate (existing), no manual migrations needed (001-jwt-auth-system)
 
 ## Recent Changes
+
 - 001-zero-doubt-prioritization: Added Go 1.23.x backend; React + Vite frontend (Node 18+) + gin-gonic/gin, gorilla/websocket, lib/pq, gorm (sqlite in tests); React, Vite, Vitest
