@@ -1,0 +1,336 @@
+/* Workflow Navigation Styles */
+
+.workflow-navigation {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+}
+
+.workflow-navigation.loading {
+  text-align: center;
+  padding: 40px;
+}
+
+.workflow-header {
+  margin-bottom: 24px;
+}
+
+.workflow-header h2 {
+  margin: 0 0 16px 0;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.progress-overview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  min-width: 80px;
+}
+
+.loading-spinner {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Workflow Steps */
+.workflow-steps {
+  position: relative;
+}
+
+.workflow-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.workflow-step.clickable {
+  cursor: pointer;
+}
+
+.workflow-step.clickable:hover {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.workflow-step.current {
+  background: #f0f9ff;
+  border-color: #0ea5e9;
+}
+
+.workflow-step.completed {
+  background: #f0fdf4;
+  border-color: #10b981;
+}
+
+.workflow-step.pending {
+  background: #f9fafb;
+  opacity: 0.7;
+}
+
+.workflow-step.pending .step-indicator,
+.workflow-step.pending .step-content {
+  opacity: 0.6;
+}
+
+/* Step Indicator */
+.step-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.workflow-step.current .step-indicator {
+  background: #0ea5e9;
+  color: white;
+}
+
+.workflow-step.completed .step-indicator {
+  background: #10b981;
+  color: white;
+}
+
+.workflow-step.available .step-indicator {
+  background: #3b82f6;
+  color: white;
+}
+
+.step-icon {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 16px;
+  background: #fff;
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.step-number {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.completion-check {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #10b981;
+  color: white;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 50%;
+  font-weight: bold;
+}
+
+/* Step Content */
+.step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-name {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.step-description {
+  margin: 0 0 8px 0;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.step-requirements {
+  margin-top: 8px;
+}
+
+.step-requirements small {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.step-requirements ul {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.step-requirements li {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.step-requirements li:before {
+  content: "• ";
+  color: #ef4444;
+  margin-right: 4px;
+}
+
+.current-indicator {
+  margin-top: 8px;
+}
+
+.current-indicator span {
+  background: #0ea5e9;
+  color: white;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Step Connectors */
+.step-connector {
+  position: absolute;
+  left: 40px;
+  top: 64px;
+  width: 2px;
+  height: 40px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+
+.step-connector.completed {
+  background: #10b981;
+}
+
+/* Workflow Actions */
+.workflow-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .workflow-navigation {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .workflow-header h2 {
+    font-size: 20px;
+  }
+
+  .progress-overview {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .workflow-step {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .step-indicator {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .step-name {
+    font-size: 16px;
+  }
+
+  .workflow-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .workflow-step {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .step-connector {
+    display: none;
+  }
+}

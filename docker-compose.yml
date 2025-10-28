@@ -1,0 +1,106 @@
+services:
+  # Backend Service with SQLite
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pairwise-backend
+    environment:
+      # SQLite Configuration (no database server needed!)
+      DATABASE_PATH: /home/pairwise/data/pairwise.db
+      
+      # Application Configuration
+      PORT: ${BACKEND_PORT:-8080}
+      GIN_MODE: ${GIN_MODE:-release}
+      
+      # Security Configuration
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      
+      # Feature Flags
+      ENABLE_WEBSOCKET: ${ENABLE_WEBSOCKET:-true}
+      ENABLE_FILE_UPLOAD: ${ENABLE_FILE_UPLOAD:-true}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      
+      # CORS Configuration
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+      
+      # File Upload Configuration
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
+      UPLOAD_PATH: ${UPLOAD_PATH:-./uploads}
+      
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - sqlite_data:/home/pairwise/data
+      - backend_uploads:/home/pairwise/uploads
+      - backend_logs:/home/pairwise/logs
+    networks:
+      - pairwise-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: pairwise-frontend
+    environment:
+      # Runtime configuration
+      API_URL: ${API_URL:-http://localhost:8080/api}
+      WEBSOCKET_URL: ${WEBSOCKET_URL:-ws://localhost:8080/api/ws}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - pairwise-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Redis Cache (optional, for session management and caching)
+  redis:
+    image: redis:7-alpine
+    container_name: pairwise-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pairwise-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+# Named volumes for data persistence
+volumes:
+  sqlite_data:
+    name: pairwise_sqlite_data
+  redis_data:
+    name: pairwise_redis_data
+  backend_uploads:
+    name: pairwise_backend_uploads
+  backend_logs:
+    name: pairwise_backend_logs
+
+# Networks
+networks:
+  pairwise-network:
+    name: pairwise_network
+    driver: bridge

@@ -1,0 +1,49 @@
+# Prometheus configuration for P-WVC monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # P-WVC Backend
+  - job_name: "pwvc-backend"
+    static_configs:
+      - targets: ["backend:8080"]
+    metrics_path: "/api/metrics"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # P-WVC Frontend (if metrics are enabled)
+  - job_name: "pwvc-frontend"
+    static_configs:
+      - targets: ["frontend:80"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL (if postgres_exporter is used)
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres:5432"]
+    scrape_interval: 30s
+
+  # Redis (if redis_exporter is used)
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+    scrape_interval: 30s
+
+  # Node Exporter (for system metrics, if available)
+  - job_name: "node"
+    static_configs:
+      - targets: ["localhost:9100"]
+    scrape_interval: 30s
+
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
