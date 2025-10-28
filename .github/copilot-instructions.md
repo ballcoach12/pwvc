@@ -79,3 +79,10 @@ go vet ./...
 - `go mod tidy` - Clean up dependencies
 - `go run .` - Run the main package
 - `go build .` - Build executable
+
+## Active Technologies
+- Go 1.23.x backend; React + Vite frontend (Node 18+) + gin-gonic/gin, gorilla/websocket, lib/pq, gorm (sqlite in tests); React, Vite, Vitest (001-zero-doubt-prioritization)
+- PostgreSQL (prod), SQLite (tests) (001-zero-doubt-prioritization)
+
+## Recent Changes
+- 001-zero-doubt-prioritization: Added Go 1.23.x backend; React + Vite frontend (Node 18+) + gin-gonic/gin, gorilla/websocket, lib/pq, gorm (sqlite in tests); React, Vite, Vitest

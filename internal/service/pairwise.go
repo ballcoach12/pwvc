@@ -18,19 +18,19 @@ type WebSocketBroadcaster interface {
 
 // PairwiseService handles business logic for pairwise comparisons
 type PairwiseService struct {
-	pairwiseRepo  *repository.PairwiseRepository
-	featureRepo   *repository.FeatureRepository
-	attendeeRepo  *repository.AttendeeRepository
-	projectRepo   *repository.ProjectRepository
+	pairwiseRepo  repository.PairwiseRepository
+	featureRepo   repository.FeatureRepository
+	attendeeRepo  repository.AttendeeRepository
+	projectRepo   repository.ProjectRepository
 	wsBroadcaster WebSocketBroadcaster
 }
 
 // NewPairwiseService creates a new pairwise service
 func NewPairwiseService(
-	pairwiseRepo *repository.PairwiseRepository,
-	featureRepo *repository.FeatureRepository,
-	attendeeRepo *repository.AttendeeRepository,
-	projectRepo *repository.ProjectRepository,
+	pairwiseRepo repository.PairwiseRepository,
+	featureRepo repository.FeatureRepository,
+	attendeeRepo repository.AttendeeRepository,
+	projectRepo repository.ProjectRepository,
 ) *PairwiseService {
 	return &PairwiseService{
 		pairwiseRepo:  pairwiseRepo,
@@ -551,4 +551,103 @@ func (s *PairwiseService) notifySessionCompleted(sessionID int, session *domain.
 	}
 
 	s.wsBroadcaster.NotifySessionCompleted(sessionID, completionMsg)
+}
+
+// ReassignPendingComparisons allows reassignment of pending comparisons to different attendees or sessions (T042 - US8)
+func (s *PairwiseService) ReassignPendingComparisons(projectID int, reassignmentRequest domain.ReassignmentRequest) error {
+	// Verify project exists
+	_, err := s.projectRepo.GetByID(projectID)
+	if err != nil {
+		return fmt.Errorf("project not found: %w", err)
+	}
+
+	// Get pending comparisons for the session/criterion
+	pendingComparisons, err := s.pairwiseRepo.GetPendingComparisons(reassignmentRequest.SessionID, reassignmentRequest.CriterionType)
+	if err != nil {
+		return fmt.Errorf("failed to get pending comparisons: %w", err)
+	}
+
+	// Process reassignments
+	var reassignedCount int
+	for _, comparisonID := range reassignmentRequest.ComparisonIDs {
+		// Find the comparison in pending list
+		var targetComparison *domain.SessionComparison
+		for _, comp := range pendingComparisons {
+			if comp.ID == comparisonID {
+				targetComparison = comp
+				break
+			}
+		}
+
+		if targetComparison == nil {
+			continue // Skip if comparison not found or not pending
+		}
+
+		// Perform the reassignment based on request type
+		switch reassignmentRequest.ReassignmentType {
+		case "session":
+			// Move comparison to different session
+			err = s.pairwiseRepo.MoveComparisonToSession(comparisonID, reassignmentRequest.TargetSessionID)
+		case "reset":
+			// Reset comparison votes to allow re-voting
+			err = s.pairwiseRepo.ResetComparisonVotes(comparisonID)
+		case "priority":
+			// Change comparison priority/order
+			err = s.pairwiseRepo.UpdateComparisonPriority(comparisonID, reassignmentRequest.NewPriority)
+		default:
+			return fmt.Errorf("invalid reassignment type: %s", reassignmentRequest.ReassignmentType)
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to reassign comparison %d: %w", comparisonID, err)
+		}
+
+		reassignedCount++
+	}
+
+	if reassignedCount == 0 {
+		return fmt.Errorf("no comparisons were reassigned")
+	}
+
+	// Broadcast reassignment notification
+	if s.wsBroadcaster != nil {
+		// For now, just notify progress update - in full implementation would have specific reassignment events
+		s.notifySessionProgress(reassignmentRequest.SessionID)
+		if reassignmentRequest.TargetSessionID != 0 && reassignmentRequest.TargetSessionID != reassignmentRequest.SessionID {
+			s.notifySessionProgress(reassignmentRequest.TargetSessionID)
+		}
+	}
+
+	return nil
+}
+
+// GetPendingComparisons retrieves pending comparisons for a session (T042 - US8)
+func (s *PairwiseService) GetPendingComparisons(sessionID int, criterionType domain.CriterionType) ([]*domain.SessionComparison, error) {
+	return s.pairwiseRepo.GetPendingComparisons(sessionID, string(criterionType))
+}
+
+// GetReassignmentOptions provides options for comparison reassignment (T042 - US8)
+func (s *PairwiseService) GetReassignmentOptions(projectID int, sessionID int) (*domain.ReassignmentOptions, error) {
+	// Get all sessions for the project
+	sessions, err := s.pairwiseRepo.GetProjectSessions(projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project sessions: %w", err)
+	}
+
+	// Get pending comparisons count
+	pendingComparisons, err := s.pairwiseRepo.GetPendingComparisons(sessionID, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending comparisons: %w", err)
+	}
+
+	return &domain.ReassignmentOptions{
+		ProjectID:            projectID,
+		CurrentSessionID:     sessionID,
+		AvailableSessions:    sessions,
+		PendingComparisons:   pendingComparisons,
+		ReassignmentTypes:    []string{"session", "reset", "priority"},
+		CanReassignToSession: len(sessions) > 1,
+		CanResetVotes:        len(pendingComparisons) > 0,
+		CanChangePriority:    len(pendingComparisons) > 1,
+	}, nil
 }

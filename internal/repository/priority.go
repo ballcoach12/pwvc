@@ -6,20 +6,30 @@ import (
 	"pairwise/internal/domain"
 )
 
-// PriorityRepository handles database operations for priority calculations
-type PriorityRepository struct {
+// PriorityRepository interface defines the contract for priority calculation data operations
+type PriorityRepository interface {
+	Create(calc *domain.PriorityCalculation) error
+	GetByProjectID(projectID int) ([]domain.PriorityCalculation, error)
+	GetResultsWithFeatures(projectID int) ([]domain.PriorityResult, error)
+	DeleteByProjectID(projectID int) error
+	ExistsForProject(projectID int) (bool, error)
+	GetLatestCalculationTime(projectID int) (*domain.PriorityCalculation, error)
+}
+
+// priorityRepository handles database operations for priority calculations
+type priorityRepository struct {
 	db *sql.DB
 }
 
 // NewPriorityRepository creates a new priority repository
-func NewPriorityRepository(db *sql.DB) *PriorityRepository {
-	return &PriorityRepository{
+func NewPriorityRepository(db *sql.DB) PriorityRepository {
+	return &priorityRepository{
 		db: db,
 	}
 }
 
 // Create inserts a new priority calculation
-func (r *PriorityRepository) Create(calc *domain.PriorityCalculation) error {
+func (r *priorityRepository) Create(calc *domain.PriorityCalculation) error {
 	query := `
 		INSERT INTO priority_calculations (
 			project_id, feature_id, w_value, w_complexity, s_value, s_complexity,
@@ -38,7 +48,7 @@ func (r *PriorityRepository) Create(calc *domain.PriorityCalculation) error {
 }
 
 // GetByProjectID retrieves all priority calculations for a project, ordered by rank
-func (r *PriorityRepository) GetByProjectID(projectID int) ([]domain.PriorityCalculation, error) {
+func (r *priorityRepository) GetByProjectID(projectID int) ([]domain.PriorityCalculation, error) {
 	query := `
 		SELECT pc.id, pc.project_id, pc.feature_id, pc.w_value, pc.w_complexity,
 		       pc.s_value, pc.s_complexity, pc.weighted_value, pc.weighted_complexity,
@@ -71,7 +81,7 @@ func (r *PriorityRepository) GetByProjectID(projectID int) ([]domain.PriorityCal
 }
 
 // GetResultsWithFeatures retrieves priority calculations with feature details
-func (r *PriorityRepository) GetResultsWithFeatures(projectID int) ([]domain.PriorityResult, error) {
+func (r *priorityRepository) GetResultsWithFeatures(projectID int) ([]domain.PriorityResult, error) {
 	query := `
 		SELECT pc.id, pc.project_id, pc.feature_id, pc.w_value, pc.w_complexity,
 		       pc.s_value, pc.s_complexity, pc.weighted_value, pc.weighted_complexity,
@@ -110,14 +120,14 @@ func (r *PriorityRepository) GetResultsWithFeatures(projectID int) ([]domain.Pri
 }
 
 // DeleteByProjectID removes all priority calculations for a project
-func (r *PriorityRepository) DeleteByProjectID(projectID int) error {
+func (r *priorityRepository) DeleteByProjectID(projectID int) error {
 	query := "DELETE FROM priority_calculations WHERE project_id = ?"
 	_, err := r.db.Exec(query, projectID)
 	return err
 }
 
 // ExistsForProject checks if priority calculations exist for a project
-func (r *PriorityRepository) ExistsForProject(projectID int) (bool, error) {
+func (r *priorityRepository) ExistsForProject(projectID int) (bool, error) {
 	query := "SELECT COUNT(*) FROM priority_calculations WHERE project_id = ?"
 
 	var count int
@@ -130,7 +140,7 @@ func (r *PriorityRepository) ExistsForProject(projectID int) (bool, error) {
 }
 
 // GetLatestCalculationTime returns the most recent calculation time for a project
-func (r *PriorityRepository) GetLatestCalculationTime(projectID int) (*domain.PriorityCalculation, error) {
+func (r *priorityRepository) GetLatestCalculationTime(projectID int) (*domain.PriorityCalculation, error) {
 	query := `
 		SELECT id, project_id, feature_id, w_value, w_complexity, s_value, s_complexity,
 		       weighted_value, weighted_complexity, final_priority_score, rank, calculated_at

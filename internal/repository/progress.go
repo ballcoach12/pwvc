@@ -7,16 +7,26 @@ import (
 	"pairwise/internal/domain"
 )
 
-type ProgressRepository struct {
+// ProgressRepository interface defines the contract for project progress data operations
+type ProgressRepository interface {
+	GetProjectProgress(projectID int) (*domain.ProjectProgress, error)
+	CreateProjectProgress(projectID int) (*domain.ProjectProgress, error)
+	UpdateProjectProgress(progress *domain.ProjectProgress) error
+	MarkPhaseCompleted(projectID int, phase domain.WorkflowPhase) error
+	DeleteProjectProgress(projectID int) error
+}
+
+// progressRepository handles database operations for project progress
+type progressRepository struct {
 	db *sql.DB
 }
 
-func NewProgressRepository(db *sql.DB) *ProgressRepository {
-	return &ProgressRepository{db: db}
+func NewProgressRepository(db *sql.DB) ProgressRepository {
+	return &progressRepository{db: db}
 }
 
 // GetProjectProgress retrieves the progress for a project
-func (r *ProgressRepository) GetProjectProgress(projectID int) (*domain.ProjectProgress, error) {
+func (r *progressRepository) GetProjectProgress(projectID int) (*domain.ProjectProgress, error) {
 	query := `
 		SELECT project_id, setup_completed, attendees_added, features_added,
 		       pairwise_value_completed, pairwise_complexity_completed,
@@ -55,7 +65,7 @@ func (r *ProgressRepository) GetProjectProgress(projectID int) (*domain.ProjectP
 }
 
 // CreateProjectProgress creates an initial progress record for a project
-func (r *ProgressRepository) CreateProjectProgress(projectID int) (*domain.ProjectProgress, error) {
+func (r *progressRepository) CreateProjectProgress(projectID int) (*domain.ProjectProgress, error) {
 	query := `
 		INSERT INTO project_progress (project_id, current_phase)
 		VALUES (?, ?)
@@ -89,7 +99,7 @@ func (r *ProgressRepository) CreateProjectProgress(projectID int) (*domain.Proje
 }
 
 // UpdateProjectProgress updates the progress for a project
-func (r *ProgressRepository) UpdateProjectProgress(progress *domain.ProjectProgress) error {
+func (r *progressRepository) UpdateProjectProgress(progress *domain.ProjectProgress) error {
 	query := `
 		UPDATE project_progress SET
 			setup_completed = ?,
@@ -126,7 +136,7 @@ func (r *ProgressRepository) UpdateProjectProgress(progress *domain.ProjectProgr
 }
 
 // MarkPhaseCompleted marks a specific phase as completed and advances to the next phase
-func (r *ProgressRepository) MarkPhaseCompleted(projectID int, phase domain.WorkflowPhase) error {
+func (r *progressRepository) MarkPhaseCompleted(projectID int, phase domain.WorkflowPhase) error {
 	progress, err := r.GetProjectProgress(projectID)
 	if err != nil {
 		return fmt.Errorf("failed to get project progress: %w", err)
@@ -161,7 +171,7 @@ func (r *ProgressRepository) MarkPhaseCompleted(projectID int, phase domain.Work
 }
 
 // DeleteProjectProgress deletes progress record for a project
-func (r *ProgressRepository) DeleteProjectProgress(projectID int) error {
+func (r *progressRepository) DeleteProjectProgress(projectID int) error {
 	query := `DELETE FROM project_progress WHERE project_id = ?`
 
 	_, err := r.db.Exec(query, projectID)

@@ -22,6 +22,12 @@ const (
 	MessageTypeSessionCompleted MessageType = "session_completed"
 	MessageTypeError            MessageType = "error"
 	MessageTypeWelcome          MessageType = "welcome"
+
+	// New P-WVC message types for T015
+	MessageTypeScoreSubmitted    MessageType = "score_submitted"
+	MessageTypeConsensusLocked   MessageType = "consensus_locked"
+	MessageTypeConsensusUnlocked MessageType = "consensus_unlocked"
+	MessageTypePhaseChanged      MessageType = "phase_changed"
 )
 
 // AttendeeStatus represents the status of an attendee
@@ -124,6 +130,48 @@ type WelcomeMessage struct {
 	CriterionType  string `json:"criterion_type"`
 	ConnectedCount int    `json:"connected_count"`
 	SessionStatus  string `json:"session_status"`
+}
+
+// ScoreSubmittedMessage represents Fibonacci score submission notification (T015)
+type ScoreSubmittedMessage struct {
+	ProjectID     int    `json:"project_id"`
+	FeatureID     int    `json:"feature_id"`
+	FeatureName   string `json:"feature_name"`
+	AttendeeID    int    `json:"attendee_id"`
+	AttendeeName  string `json:"attendee_name"`
+	CriterionType string `json:"criterion_type"` // "value" or "complexity"
+	Score         int    `json:"score"`          // Fibonacci value
+	SubmittedAt   string `json:"submitted_at"`
+}
+
+// ConsensusLockedMessage represents consensus lock notification (T015)
+type ConsensusLockedMessage struct {
+	ProjectID       int    `json:"project_id"`
+	FeatureID       int    `json:"feature_id"`
+	FeatureName     string `json:"feature_name"`
+	SValue          int    `json:"s_value"`
+	SComplexity     int    `json:"s_complexity"`
+	FacilitatorID   int    `json:"facilitator_id"`
+	FacilitatorName string `json:"facilitator_name"`
+	LockedAt        string `json:"locked_at"`
+	Rationale       string `json:"rationale,omitempty"`
+}
+
+// ConsensusUnlockedMessage represents consensus unlock notification (T015)
+type ConsensusUnlockedMessage struct {
+	ProjectID int `json:"project_id"`
+	FeatureID int `json:"feature_id"`
+}
+
+// PhaseChangedMessage represents project phase transition notification (T015)
+type PhaseChangedMessage struct {
+	ProjectID     int    `json:"project_id"`
+	NewPhase      string `json:"new_phase"` // "pairwise_value", "pairwise_complexity", "fibonacci_scoring", "consensus", "results"
+	OldPhase      string `json:"old_phase"`
+	ChangedBy     int    `json:"changed_by"`
+	ChangedByName string `json:"changed_by_name"`
+	ChangedAt     string `json:"changed_at"`
+	Message       string `json:"message,omitempty"` // Human-readable transition message
 }
 
 // CreateMessage creates a new WebSocket message

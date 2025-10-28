@@ -30,6 +30,36 @@ type PairwiseSession struct {
 	CompletedAt   *time.Time    `json:"completed_at,omitempty" db:"completed_at"`
 }
 
+// ConsensusScore represents a locked consensus score for a feature
+type ConsensusScore struct {
+	ID          int       `json:"id" db:"id"`
+	ProjectID   int       `json:"project_id" db:"project_id"`
+	FeatureID   int       `json:"feature_id" db:"feature_id"`
+	SValue      int       `json:"s_value" db:"s_value"`
+	SComplexity int       `json:"s_complexity" db:"s_complexity"`
+	LockedBy    int       `json:"locked_by" db:"locked_by"`
+	LockedAt    time.Time `json:"locked_at" db:"locked_at"`
+	Rationale   string    `json:"rationale,omitempty" db:"rationale"`
+
+	// Populated via joins
+	Feature     *Feature  `json:"feature,omitempty" gorm:"foreignKey:FeatureID"`
+	Facilitator *Attendee `json:"facilitator,omitempty" gorm:"foreignKey:LockedBy"`
+}
+
+// AuditLog represents an audit trail entry
+type AuditLog struct {
+	ID         int       `json:"id" db:"id"`
+	ProjectID  int       `json:"project_id" db:"project_id"`
+	AttendeeID int       `json:"attendee_id" db:"attendee_id"`
+	Action     string    `json:"action" db:"action"`
+	EntityType string    `json:"entity_type" db:"entity_type"`
+	EntityID   string    `json:"entity_id" db:"entity_id"`
+	OldValue   string    `json:"old_value,omitempty" db:"old_value"` // JSON string representation
+	NewValue   string    `json:"new_value,omitempty" db:"new_value"` // JSON string representation
+	Timestamp  time.Time `json:"timestamp" db:"timestamp"`
+	Metadata   string    `json:"metadata,omitempty" db:"metadata"` // JSON string representation
+}
+
 // TableName returns the table name for GORM
 func (PairwiseSession) TableName() string {
 	return "pairwise_sessions"
@@ -108,4 +138,68 @@ type ComparisonWithVotes struct {
 type FeaturePair struct {
 	FeatureA *Feature `json:"feature_a"`
 	FeatureB *Feature `json:"feature_b"`
+}
+
+// FibonacciScore represents a Fibonacci scoring entry for a feature
+type FibonacciScore struct {
+	ID             int       `json:"id" db:"id"`
+	FeatureID      int       `json:"feature_id" db:"feature_id"`
+	AttendeeID     int       `json:"attendee_id" db:"attendee_id"`
+	CriterionType  string    `json:"criterion_type" db:"criterion_type"`
+	FibonacciValue int       `json:"fibonacci_value" db:"fibonacci_value"`
+	Rationale      string    `json:"rationale,omitempty" db:"rationale"`
+	SubmittedAt    time.Time `json:"submitted_at" db:"submitted_at"`
+
+	// Populated via joins
+	Feature  *Feature  `json:"feature,omitempty"`
+	Attendee *Attendee `json:"attendee,omitempty"`
+}
+
+// TableName returns the table name for GORM
+func (FibonacciScore) TableName() string {
+	return "fibonacci_scores"
+}
+
+// SubmitScoreRequest represents the request to submit a Fibonacci score
+type SubmitScoreRequest struct {
+	FeatureID      int    `json:"feature_id" binding:"required"`
+	AttendeeID     int    `json:"attendee_id" binding:"required"`
+	FibonacciValue int    `json:"fibonacci_value" binding:"required"`
+	Rationale      string `json:"rationale,omitempty"`
+}
+
+// LockConsensusRequest represents the request to lock consensus scores
+type LockConsensusRequest struct {
+	FeatureID   int    `json:"feature_id" binding:"required"`
+	SValue      int    `json:"s_value" binding:"required"`
+	SComplexity int    `json:"s_complexity" binding:"required"`
+	Rationale   string `json:"rationale,omitempty"`
+}
+
+// UnlockConsensusRequest represents the request to unlock consensus scores
+type UnlockConsensusRequest struct {
+	FeatureID int `json:"feature_id" binding:"required"`
+}
+
+// ReassignmentRequest represents a request to reassign pending comparisons (T042 - US8)
+type ReassignmentRequest struct {
+	SessionID        int    `json:"session_id" binding:"required"`
+	CriterionType    string `json:"criterion_type" binding:"required"`
+	ComparisonIDs    []int  `json:"comparison_ids" binding:"required"`
+	ReassignmentType string `json:"reassignment_type" binding:"required"` // "session", "reset", "priority"
+	TargetSessionID  int    `json:"target_session_id,omitempty"`
+	NewPriority      int    `json:"new_priority,omitempty"`
+	Reason           string `json:"reason,omitempty"`
+}
+
+// ReassignmentOptions represents available options for comparison reassignment (T042 - US8)
+type ReassignmentOptions struct {
+	ProjectID            int                  `json:"project_id"`
+	CurrentSessionID     int                  `json:"current_session_id"`
+	AvailableSessions    []*PairwiseSession   `json:"available_sessions"`
+	PendingComparisons   []*SessionComparison `json:"pending_comparisons"`
+	ReassignmentTypes    []string             `json:"reassignment_types"`
+	CanReassignToSession bool                 `json:"can_reassign_to_session"`
+	CanResetVotes        bool                 `json:"can_reset_votes"`
+	CanChangePriority    bool                 `json:"can_change_priority"`
 }

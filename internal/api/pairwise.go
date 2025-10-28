@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"pairwise/internal/domain"
+	"pairwise/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -154,6 +155,18 @@ func (h *Handler) SubmitPairwiseVote(c *gin.Context) {
 		return
 	}
 
+	// Audit log the vote submission (T043 - US9)
+	if h.auditService != nil {
+		err = h.auditService.LogVoteAction(projectID, req.AttendeeID, vote.ComparisonID, vote.PreferredFeatureID, vote.IsTieVote)
+		if err != nil {
+			// Log error but don't fail the request
+			// TODO: Add proper logging
+		}
+	}
+
+	// Broadcast vote update via WebSocket (T022 - US2)
+	h.broadcastVoteUpdate(projectID, vote, criterionType)
+
 	c.JSON(http.StatusCreated, gin.H{
 		"vote": vote,
 	})
@@ -251,4 +264,138 @@ func (h *Handler) GetNextComparison(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"comparison": comparison,
 	})
+}
+
+// broadcastVoteUpdate sends WebSocket notification for vote updates (T022 - US2)
+func (h *Handler) broadcastVoteUpdate(projectID int, vote *domain.AttendeeVote, criterionType string) {
+	if h.wsHub == nil || vote == nil {
+		return
+	}
+
+	// Get attendee name if available
+	attendeeName := ""
+	if vote.Attendee != nil {
+		attendeeName = vote.Attendee.Name
+	}
+
+	voteMsg := websocket.VoteUpdateMessage{
+		ComparisonID:       vote.ComparisonID,
+		AttendeeID:         vote.AttendeeID,
+		AttendeeName:       attendeeName,
+		PreferredFeatureID: vote.PreferredFeatureID,
+		IsTieVote:          vote.IsTieVote,
+		ConsensusReached:   false, // Will be updated by comparison service
+	}
+
+	msg, err := websocket.CreateMessage(websocket.MessageTypeVoteUpdate, voteMsg)
+	if err != nil {
+		return
+	}
+
+	h.wsHub.BroadcastToProject(projectID, msg)
+}
+
+// ReassignPendingComparisons handles POST /api/projects/:id/pairwise/reassign (T042 - US8)
+func (h *Handler) ReassignPendingComparisons(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid project ID",
+		})
+		return
+	}
+
+	// Require facilitator authorization (T042 - US8)
+	if !h.checkIsFacilitator(c) {
+		return // checkIsFacilitator already sends the error response
+	}
+
+	var req domain.ReassignmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request payload",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	err = h.pairwiseService.ReassignPendingComparisons(projectID, req)
+	if err != nil {
+		handleServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":           "Comparisons reassigned successfully",
+		"reassigned_count":  len(req.ComparisonIDs),
+		"reassignment_type": req.ReassignmentType,
+	})
+}
+
+// GetPendingComparisons handles GET /api/projects/:id/pairwise/pending (T042 - US8)
+func (h *Handler) GetPendingComparisons(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid project ID",
+		})
+		return
+	}
+
+	sessionID, err := strconv.Atoi(c.Query("session_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid session ID",
+		})
+		return
+	}
+
+	criterionType := c.Query("criterion")
+	if criterionType != "" && criterionType != "value" && criterionType != "complexity" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid criterion type",
+		})
+		return
+	}
+
+	// Note: projectID from URL param is available but not used since session already contains project context
+	_ = projectID
+
+	pendingComparisons, err := h.pairwiseService.GetPendingComparisons(sessionID, domain.CriterionType(criterionType))
+	if err != nil {
+		handleServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"pending_comparisons": pendingComparisons,
+		"count":               len(pendingComparisons),
+	})
+}
+
+// GetReassignmentOptions handles GET /api/projects/:id/pairwise/reassignment-options (T042 - US8)
+func (h *Handler) GetReassignmentOptions(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid project ID",
+		})
+		return
+	}
+
+	sessionID, err := strconv.Atoi(c.Query("session_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid session ID",
+		})
+		return
+	}
+
+	options, err := h.pairwiseService.GetReassignmentOptions(projectID, sessionID)
+	if err != nil {
+		handleServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, options)
 }
