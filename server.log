@@ -1,0 +1,54 @@
+nohup: ignoring input
+2025/10/13 01:22:31 Successfully connected to SQLite database
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /                         --> main.setupRouter.func1 (8 handlers)
+[GIN-debug] GET    /api/projects             --> pairwise/internal/api.(*Handler).GetProjects-fm (8 handlers)
+[GIN-debug] POST   /api/projects             --> pairwise/internal/api.(*Handler).CreateProject-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id         --> pairwise/internal/api.(*Handler).GetProject-fm (8 handlers)
+[GIN-debug] PUT    /api/projects/:id         --> pairwise/internal/api.(*Handler).UpdateProject-fm (8 handlers)
+[GIN-debug] DELETE /api/projects/:id         --> pairwise/internal/api.(*Handler).DeleteProject-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/attendees --> pairwise/internal/api.(*Handler).GetProjectAttendees-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/attendees --> pairwise/internal/api.(*Handler).CreateAttendee-fm (8 handlers)
+[GIN-debug] DELETE /api/projects/:id/attendees/:attendeeId --> pairwise/internal/api.(*Handler).DeleteAttendee-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/features --> pairwise/internal/api.(*Handler).GetProjectFeatures-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/features --> pairwise/internal/api.(*Handler).CreateFeature-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/features/:featureId --> pairwise/internal/api.(*Handler).GetFeature-fm (8 handlers)
+[GIN-debug] PUT    /api/projects/:id/features/:featureId --> pairwise/internal/api.(*Handler).UpdateFeature-fm (8 handlers)
+[GIN-debug] DELETE /api/projects/:id/features/:featureId --> pairwise/internal/api.(*Handler).DeleteFeature-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/features/import --> pairwise/internal/api.(*Handler).ImportFeatures-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/features/export --> pairwise/internal/api.(*Handler).ExportFeatures-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/pairwise --> pairwise/internal/api.(*Handler).StartPairwiseSession-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/pairwise --> pairwise/internal/api.(*Handler).GetPairwiseSession-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/pairwise/comparisons --> pairwise/internal/api.(*Handler).GetPairwiseSessionComparisons-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/pairwise/votes --> pairwise/internal/api.(*Handler).SubmitPairwiseVote-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/pairwise/complete --> pairwise/internal/api.(*Handler).CompletePairwiseSession-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/pairwise/next --> pairwise/internal/api.(*Handler).GetNextComparison-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/calculate-results --> pairwise/internal/api.(*Handler).CalculateResults-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/results --> pairwise/internal/api.(*Handler).GetResults-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/results/export --> pairwise/internal/api.(*Handler).ExportResults-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/results/summary --> pairwise/internal/api.(*Handler).GetResultsSummary-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/results/status --> pairwise/internal/api.(*Handler).CheckResultsStatus-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/results/preview --> pairwise/internal/api.(*Handler).PreviewExport-fm (8 handlers)
+2025/10/13 01:22:31 WebSocket Hub started
+[GIN-debug] GET    /api/projects/:id/progress --> pairwise/internal/api.(*Handler).GetProjectProgress-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/progress/advance --> pairwise/internal/api.(*Handler).AdvancePhase-fm (8 handlers)
+[GIN-debug] POST   /api/projects/:id/progress/complete --> pairwise/internal/api.(*Handler).CompletePhase-fm (8 handlers)
+[GIN-debug] GET    /api/projects/:id/progress/phases --> pairwise/internal/api.(*Handler).GetAvailablePhases-fm (8 handlers)
+[GIN-debug] GET    /api/ws/:projectId        --> pairwise/internal/api.(*Handler).HandleWebSocket-fm (8 handlers)
+[GIN-debug] GET    /api/ws/stats             --> pairwise/internal/api.(*Handler).GetWebSocketStats-fm (8 handlers)
+[GIN-debug] GET    /health                   --> pairwise/internal/api.(*Handler).registerHealthEndpoints.func1 (8 handlers)
+2025/10/13 01:22:31 PairWise Server starting on port 8080
+2025/10/13 01:22:31 Health check available at: http://localhost:8080/health
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080
+{"timestamp":"2025-10-13T01:22:52Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/health","status_code":200,"duration":"103.306µs"}
+{"timestamp":"2025-10-13T01:22:57Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/health","status_code":200,"duration":"86.104µs"}
+{"timestamp":"2025-10-13T01:23:27Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/api/projects","status_code":200,"duration":"248.512µs"}
+{"timestamp":"2025-10-13T01:23:34Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/api/projects/1/features","status_code":200,"duration":"377.12µs"}
+{"timestamp":"2025-10-13T01:28:22Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/api/projects/1/features","status_code":200,"duration":"314.116µs"}
+{"timestamp":"2025-10-13T01:28:42Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"POST","path":"/api/projects/1/features","status_code":201,"duration":"10.413372ms"}
+{"timestamp":"2025-10-13T01:28:55Z","level":"info","message":"HTTP request","service":"pwvc","request_id":"req_goroutin","method":"GET","path":"/api/projects/1/features","status_code":200,"duration":"226.012µs"}
