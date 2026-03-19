@@ -115,6 +115,13 @@ func (h *Hub) BroadcastToSessionExcept(sessionID int, message *Message, excludeC
 	}
 }
 
+// BroadcastToProject broadcasts a message to all sessions in a project (T038 - US7)
+func (h *Hub) BroadcastToProject(projectID int, message *Message) {
+	// For now, we'll use sessionID as projectID since we don't have project-session mapping
+	// In a full implementation, we'd need to maintain a project -> sessions mapping
+	h.BroadcastToSession(projectID, message)
+}
+
 // HandleClientJoin handles when a client successfully joins a session
 func (h *Hub) HandleClientJoin(client *Client) {
 	attendee, err := h.attendeeRepo.GetByID(client.GetAttendeeID())
@@ -200,6 +207,54 @@ func (h *Hub) NotifySessionCompleted(sessionID int, completion SessionCompletedM
 	}
 
 	h.BroadcastToSession(sessionID, message)
+	h.updateStats(false, true)
+}
+
+// NotifyScoreSubmitted notifies all clients about a score submission (T038 - US7)
+func (h *Hub) NotifyScoreSubmitted(projectID int, scoreSubmission ScoreSubmittedMessage) {
+	message, err := CreateMessage(MessageTypeScoreSubmitted, scoreSubmission)
+	if err != nil {
+		log.Printf("Failed to create score submitted message: %v", err)
+		return
+	}
+
+	h.BroadcastToProject(projectID, message)
+	h.updateStats(false, true)
+}
+
+// NotifyConsensusLocked notifies all clients about consensus being locked (T038 - US7)
+func (h *Hub) NotifyConsensusLocked(projectID int, consensusLocked ConsensusLockedMessage) {
+	message, err := CreateMessage(MessageTypeConsensusLocked, consensusLocked)
+	if err != nil {
+		log.Printf("Failed to create consensus locked message: %v", err)
+		return
+	}
+
+	h.BroadcastToProject(projectID, message)
+	h.updateStats(false, true)
+}
+
+// NotifyConsensusUnlocked notifies all clients about consensus being unlocked (T038 - US7)
+func (h *Hub) NotifyConsensusUnlocked(projectID int, consensusUnlocked ConsensusUnlockedMessage) {
+	message, err := CreateMessage(MessageTypeConsensusUnlocked, consensusUnlocked)
+	if err != nil {
+		log.Printf("Failed to create consensus unlocked message: %v", err)
+		return
+	}
+
+	h.BroadcastToProject(projectID, message)
+	h.updateStats(false, true)
+}
+
+// NotifyPhaseChanged notifies all clients about a phase change (T038 - US7)
+func (h *Hub) NotifyPhaseChanged(projectID int, phaseChange PhaseChangedMessage) {
+	message, err := CreateMessage(MessageTypePhaseChanged, phaseChange)
+	if err != nil {
+		log.Printf("Failed to create phase changed message: %v", err)
+		return
+	}
+
+	h.BroadcastToProject(projectID, message)
 	h.updateStats(false, true)
 }
 

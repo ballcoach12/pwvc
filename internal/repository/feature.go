@@ -6,18 +6,29 @@ import (
 	"pairwise/internal/domain"
 )
 
-// FeatureRepository handles database operations for features
-type FeatureRepository struct {
+// FeatureRepository interface defines the contract for feature data operations
+type FeatureRepository interface {
+	Create(projectID int, req domain.CreateFeatureRequest) (*domain.Feature, error)
+	GetByID(id int) (*domain.Feature, error)
+	GetByProjectID(projectID int) ([]domain.Feature, error)
+	Update(id int, req domain.UpdateFeatureRequest) (*domain.Feature, error)
+	Delete(id int) error
+	DeleteByProjectID(projectID int) error
+	CreateBatch(projectID int, features []domain.CreateFeatureRequest) ([]domain.Feature, error)
+}
+
+// featureRepository handles database operations for features
+type featureRepository struct {
 	db *sql.DB
 }
 
 // NewFeatureRepository creates a new feature repository
-func NewFeatureRepository(db *sql.DB) *FeatureRepository {
-	return &FeatureRepository{db: db}
+func NewFeatureRepository(db *sql.DB) FeatureRepository {
+	return &featureRepository{db: db}
 }
 
 // Create creates a new feature
-func (r *FeatureRepository) Create(projectID int, req domain.CreateFeatureRequest) (*domain.Feature, error) {
+func (r *featureRepository) Create(projectID int, req domain.CreateFeatureRequest) (*domain.Feature, error) {
 	query := `
 		INSERT INTO features (project_id, title, description, acceptance_criteria, created_at, updated_at)
 		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -43,7 +54,7 @@ func (r *FeatureRepository) Create(projectID int, req domain.CreateFeatureReques
 }
 
 // GetByID retrieves a feature by ID
-func (r *FeatureRepository) GetByID(id int) (*domain.Feature, error) {
+func (r *featureRepository) GetByID(id int) (*domain.Feature, error) {
 	query := `
 		SELECT id, project_id, title, description, acceptance_criteria, created_at, updated_at
 		FROM features
@@ -72,7 +83,7 @@ func (r *FeatureRepository) GetByID(id int) (*domain.Feature, error) {
 }
 
 // GetByProjectID retrieves all features for a project
-func (r *FeatureRepository) GetByProjectID(projectID int) ([]domain.Feature, error) {
+func (r *featureRepository) GetByProjectID(projectID int) ([]domain.Feature, error) {
 	query := `
 		SELECT id, project_id, title, description, acceptance_criteria, created_at, updated_at
 		FROM features
@@ -108,7 +119,7 @@ func (r *FeatureRepository) GetByProjectID(projectID int) ([]domain.Feature, err
 }
 
 // Update updates an existing feature
-func (r *FeatureRepository) Update(id int, req domain.UpdateFeatureRequest) (*domain.Feature, error) {
+func (r *featureRepository) Update(id int, req domain.UpdateFeatureRequest) (*domain.Feature, error) {
 	query := `
 		UPDATE features 
 		SET title = ?, description = ?, acceptance_criteria = ?, updated_at = datetime('now')
@@ -138,7 +149,7 @@ func (r *FeatureRepository) Update(id int, req domain.UpdateFeatureRequest) (*do
 }
 
 // Delete deletes a feature
-func (r *FeatureRepository) Delete(id int) error {
+func (r *featureRepository) Delete(id int) error {
 	query := `DELETE FROM features WHERE id = ?`
 
 	result, err := r.db.Exec(query, id)
@@ -159,14 +170,14 @@ func (r *FeatureRepository) Delete(id int) error {
 }
 
 // DeleteByProjectID deletes all features for a project
-func (r *FeatureRepository) DeleteByProjectID(projectID int) error {
+func (r *featureRepository) DeleteByProjectID(projectID int) error {
 	query := `DELETE FROM features WHERE project_id = ?`
 	_, err := r.db.Exec(query, projectID)
 	return err
 }
 
 // CreateBatch creates multiple features in a single transaction
-func (r *FeatureRepository) CreateBatch(projectID int, features []domain.CreateFeatureRequest) ([]domain.Feature, error) {
+func (r *featureRepository) CreateBatch(projectID int, features []domain.CreateFeatureRequest) ([]domain.Feature, error) {
 	if len(features) == 0 {
 		return []domain.Feature{}, nil
 	}

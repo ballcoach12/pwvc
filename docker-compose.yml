@@ -10,7 +10,7 @@ services:
       DATABASE_PATH: /home/pairwise/data/pairwise.db
       
       # Application Configuration
-      PORT: ${BACKEND_PORT:-8080}
+      PORT: 8080
       GIN_MODE: ${GIN_MODE:-release}
       
       # Security Configuration

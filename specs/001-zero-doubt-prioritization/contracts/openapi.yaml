@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: PairWise Value/Complexity API
+  version: 0.1.0
+servers:
+  - url: /api
+paths:
+  /projects/{id}/pairwise-sessions:
+    post:
+      summary: Start pairwise session
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                criterion_type:
+                  type: string
+                  enum: [value, complexity]
+      responses:
+        '201': { description: Session started }
+  /projects/{id}/pairwise:
+    get:
+      summary: Get active pairwise session and progress
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: criterion_type
+          required: true
+          schema: { type: string, enum: [value, complexity] }
+      responses:
+        '200': { description: Session and progress }
+  /projects/{id}/pairwise/comparisons:
+    get:
+      summary: List comparisons in active session
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: criterion_type
+          required: true
+          schema: { type: string, enum: [value, complexity] }
+      responses:
+        '200': { description: Comparisons }
+  /projects/{id}/pairwise-sessions/{session_id}/vote:
+    post:
+      summary: Submit pairwise vote
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: session_id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comparison_id, attendee_id]
+              properties:
+                comparison_id: { type: integer }
+                attendee_id: { type: integer }
+                preferred_feature_id: { type: integer, nullable: true }
+                is_tie_vote: { type: boolean }
+      responses:
+        '200': { description: Vote accepted }
+  /projects/{id}/scores/value:
+    post:
+      summary: Submit Fibonacci value score
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feature_id, attendee_id, fibonacci]
+              properties:
+                feature_id: { type: integer }
+                attendee_id: { type: integer }
+                fibonacci: { type: integer, enum: [1,2,3,5,8,13,21,34,55,89] }
+      responses:
+        '200': { description: Score saved }
+  /projects/{id}/scores/complexity:
+    post:
+      summary: Submit Fibonacci complexity score
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feature_id, attendee_id, fibonacci]
+              properties:
+                feature_id: { type: integer }
+                attendee_id: { type: integer }
+                fibonacci: { type: integer, enum: [1,2,3,5,8,13,21,34,55,89] }
+      responses:
+        '200': { description: Score saved }
+  /projects/{id}/consensus/{feature_id}:
+    post:
+      summary: Lock consensus scores for a feature
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: feature_id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [s_value, s_complexity]
+              properties:
+                s_value: { type: integer, enum: [1,2,3,5,8,13,21,34,55,89] }
+                s_complexity: { type: integer, enum: [1,2,3,5,8,13,21,34,55,89] }
+                rationale: { type: string }
+      responses:
+        '200': { description: Consensus locked }
+  /projects/{id}/calculate-results:
+    post:
+      summary: Calculate results (FPS)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Calculations persisted }
+  /projects/{id}/results:
+    get:
+      summary: Get results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Results list }
+  /projects/{id}/results/export:
+    get:
+      summary: Export results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: format
+          required: true
+          schema: { type: string, enum: [csv, json, jira] }
+      responses:
+        '200': { description: Exported data }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    PriorityResult:
+      type: object
+      properties:
+        feature_id: { type: integer }
+        title: { type: string }
+        s_value: { type: integer }
+        s_complexity: { type: integer }
+        w_value: { type: number }
+        w_complexity: { type: number }
+        final_priority_score: { type: number }
+        rank: { type: integer }
+security:
+  - bearerAuth: []

@@ -10,6 +10,7 @@ type Project struct {
 	Name        string    `json:"name" db:"name" binding:"required,min=1,max=255"`
 	Description string    `json:"description" db:"description"`
 	Status      string    `json:"status" db:"status"`
+	InviteCode  string    `json:"invite_code,omitempty" db:"invite_code"` // For T016 - US1 invite links
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }

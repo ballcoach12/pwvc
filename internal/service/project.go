@@ -7,11 +7,11 @@ import (
 
 // ProjectService handles business logic for projects
 type ProjectService struct {
-	projectRepo *repository.ProjectRepository
+	projectRepo repository.ProjectRepository
 }
 
 // NewProjectService creates a new project service
-func NewProjectService(projectRepo *repository.ProjectRepository) *ProjectService {
+func NewProjectService(projectRepo repository.ProjectRepository) *ProjectService {
 	return &ProjectService{
 		projectRepo: projectRepo,
 	}
@@ -122,4 +122,38 @@ func (s *ProjectService) ListProjects() ([]domain.Project, error) {
 	}
 
 	return projects, nil
+}
+
+// UpdateProjectInviteCode updates a project's invite code (T016 - US1)
+func (s *ProjectService) UpdateProjectInviteCode(id int, inviteCode string) (*domain.Project, error) {
+	if id <= 0 {
+		return nil, domain.NewAPIError(400, "Invalid project ID")
+	}
+
+	project, err := s.projectRepo.UpdateInviteCode(id, inviteCode)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return nil, domain.NewAPIError(404, "Project not found")
+		}
+		return nil, domain.NewAPIError(500, "Failed to update invite code", err.Error())
+	}
+
+	return project, nil
+}
+
+// GetProjectByInviteCode retrieves a project by its invite code (T016 - US1)
+func (s *ProjectService) GetProjectByInviteCode(inviteCode string) (*domain.Project, error) {
+	if inviteCode == "" {
+		return nil, domain.NewAPIError(400, "Invite code is required")
+	}
+
+	project, err := s.projectRepo.GetByInviteCode(inviteCode)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return nil, domain.NewAPIError(404, "Invalid invite code")
+		}
+		return nil, domain.NewAPIError(500, "Failed to retrieve project", err.Error())
+	}
+
+	return project, nil
 }

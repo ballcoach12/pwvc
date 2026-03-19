@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Common domain errors
@@ -87,3 +88,37 @@ const (
 	ErrTypeResourceConflict  = "resource_conflict"
 	ErrTypeInvalidTransition = "invalid_transition"
 )
+
+// AuditReportOptions defines options for generating audit reports (T044 - US9)
+type AuditReportOptions struct {
+	Limit               int    `json:"limit,omitempty"`
+	ActionType          string `json:"action_type,omitempty"`
+	IncludePersonalData bool   `json:"include_personal_data,omitempty"`
+}
+
+// AuditReport represents a comprehensive audit report with privacy controls (T044 - US9)
+type AuditReport struct {
+	ProjectID    int                `json:"project_id"`
+	ProjectName  string             `json:"project_name"`
+	GeneratedAt  time.Time          `json:"generated_at"`
+	TotalActions int                `json:"total_actions"`
+	DateRange    DateRange          `json:"date_range"`
+	Statistics   AuditStatistics    `json:"statistics"`
+	AuditLogs    []AuditLog         `json:"audit_logs"`
+	PrivacyMode  bool               `json:"privacy_mode"`
+	Options      AuditReportOptions `json:"options"`
+}
+
+// AuditStatistics provides summary statistics for audit reports (T044 - US9)
+type AuditStatistics struct {
+	ActionCounts           map[string]int `json:"action_counts"`
+	EntityTypeCounts       map[string]int `json:"entity_type_counts"`
+	AttendeeActivityCounts map[int]int    `json:"attendee_activity_counts"`
+	TotalActions           int            `json:"total_actions"`
+}
+
+// DateRange represents a time range for audit reporting (T044 - US9)
+type DateRange struct {
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+}

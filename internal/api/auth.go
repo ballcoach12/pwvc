@@ -1,85 +1,95 @@
 package api
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"net/http"
-	"strconv"
 
 	"pairwise/internal/domain"
 
 	"github.com/gin-gonic/gin"
 )
 
-// AttendeeLoginRequest represents the login payload
-type AttendeeLoginRequest struct {
-	AttendeeID int    `json:"attendee_id" binding:"required"`
-	PIN        string `json:"pin" binding:"required"`
+// LoginRequest represents the login request payload
+type LoginRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Password string `json:"password" binding:"required,min=8"`
 }
 
-// AttendeeLoginResponse represents the login response
-type AttendeeLoginResponse struct {
-	Attendee *domain.Attendee `json:"attendee"`
-	Token    string           `json:"token"` // Simple token for now
+// LoginResponse represents the login response
+type LoginResponse struct {
+	Success bool         `json:"success"`
+	Message string       `json:"message"`
+	User    *domain.User `json:"user"`
 }
 
-// LoginAttendee handles POST /api/projects/:id/attendees/login
-func (h *Handler) LoginAttendee(c *gin.Context) {
-	projectID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid project ID",
-		})
-		return
-	}
-
-	var req AttendeeLoginRequest
+// Login handles POST /api/v1/auth/login
+func (h *Handler) Login(c *gin.Context) {
+	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request payload",
-			"details": err.Error(),
+			"success": false,
+			"error":   "Invalid request format",
+			"code":    "INVALID_REQUEST",
 		})
 		return
 	}
 
-	// Get attendee
-	attendee, err := h.attendeeService.GetAttendee(req.AttendeeID)
+	// Convert to domain LoginRequest
+	loginReq := &domain.LoginRequest{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
+	token, user, err := h.authService.Login(loginReq)
 	if err != nil {
-		handleServiceError(c, err)
-		return
-	}
-
-	// Verify attendee belongs to project
-	if attendee.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Attendee not found in this project",
-		})
-		return
-	}
-
-	// Debug logging
-	hashedPIN := hashPIN(req.PIN)
-	fmt.Printf("DEBUG: Attendee ID %d, PinHash from DB: '%s', Computed hash: '%s'\n", attendee.ID, attendee.PinHash, hashedPIN)
-
-	// Verify PIN (simple hash comparison for now)
-	if attendee.PinHash != hashedPIN {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid PIN",
+			"success": false,
+			"error":   err.Error(),
+			"code":    "LOGIN_FAILED",
 		})
 		return
 	}
 
-	// Create simple token (project:attendee format for now)
-	token := fmt.Sprintf("%d:%d", projectID, attendee.ID)
+	// Set secure HTTP-only cookie
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("auth", token, 86400, "/", "", false, true) // 24 hours, secure=false for dev, httpOnly=true
 
-	c.JSON(http.StatusOK, AttendeeLoginResponse{
-		Attendee: attendee,
-		Token:    token,
+	c.JSON(http.StatusOK, LoginResponse{
+		Success: true,
+		Message: "Login successful",
+		User:    user,
 	})
 }
 
-// hashPIN creates a simple hash of the PIN
-func hashPIN(pin string) string {
-	hash := sha256.Sum256([]byte(pin))
-	return fmt.Sprintf("%x", hash)
+// Logout handles POST /api/v1/auth/logout
+func (h *Handler) Logout(c *gin.Context) {
+	// Clear the auth cookie
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("auth", "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Logout successful",
+	})
+}
+
+// GetCurrentUser handles GET /api/v1/auth/me
+func (h *Handler) GetCurrentUser(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "User not authenticated",
+			"code":    "NOT_AUTHENTICATED",
+		})
+		return
+	}
+
+	username, _ := c.Get("username")
+	roles, _ := c.Get("roles")
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":       userID,
+		"username": username,
+		"roles":    roles,
+	})
 }

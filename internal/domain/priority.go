@@ -82,3 +82,45 @@ type JiraCustomFields struct {
 	ValueScore         int     `json:"valueScore"`
 	ComplexityScore    int     `json:"complexityScore"`
 }
+
+// FibonacciProgressMetrics represents progress metrics for Fibonacci scoring phases (T040 - US8)
+type FibonacciProgressMetrics struct {
+	ProjectID           int                           `json:"project_id"`
+	CriterionType       string                        `json:"criterion_type"` // "value" or "complexity"
+	CompletedScores     int                           `json:"completed_scores"`
+	TotalExpectedScores int                           `json:"total_expected_scores"`
+	ProgressPercentage  float64                       `json:"progress_percentage"`
+	FeatureCompletion   map[int]FeatureScoreProgress  `json:"feature_completion"`
+	AttendeeCompletion  map[int]AttendeeScoreProgress `json:"attendee_completion"`
+}
+
+// FeatureScoreProgress represents scoring progress for a specific feature (T040 - US8)
+type FeatureScoreProgress struct {
+	FeatureID           int     `json:"feature_id"`
+	FeatureName         string  `json:"feature_name"`
+	CompletedScores     int     `json:"completed_scores"`
+	TotalExpectedScores int     `json:"total_expected_scores"`
+	ProgressPercentage  float64 `json:"progress_percentage"`
+}
+
+// AttendeeScoreProgress represents scoring progress for a specific attendee (T040 - US8)
+type AttendeeScoreProgress struct {
+	AttendeeID          int     `json:"attendee_id"`
+	AttendeeName        string  `json:"attendee_name"`
+	CompletedScores     int     `json:"completed_scores"`
+	TotalExpectedScores int     `json:"total_expected_scores"`
+	ProgressPercentage  float64 `json:"progress_percentage"`
+}
+
+// OverallFibonacciProgress represents combined progress for both value and complexity scoring (T040 - US8)
+type OverallFibonacciProgress struct {
+	ProjectID            int                       `json:"project_id"`
+	ValueMetrics         *FibonacciProgressMetrics `json:"value_metrics"`
+	ComplexityMetrics    *FibonacciProgressMetrics `json:"complexity_metrics"`
+	OverallProgress      float64                   `json:"overall_progress"`
+	TotalCompleted       int                       `json:"total_completed"`
+	TotalExpected        int                       `json:"total_expected"`
+	IsValueComplete      bool                      `json:"is_value_complete"`
+	IsComplexityComplete bool                      `json:"is_complexity_complete"`
+	IsBothComplete       bool                      `json:"is_both_complete"`
+}

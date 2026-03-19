@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CalculateResults handles POST /api/projects/{id}/calculate-results
+// CalculateResults handles POST /api/projects/{id}/calculate-results (facilitator-only)
 func (h *Handler) CalculateResults(c *gin.Context) {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -20,6 +20,11 @@ func (h *Handler) CalculateResults(c *gin.Context) {
 			"error": "Invalid project ID",
 		})
 		return
+	}
+
+	// Require facilitator authorization (T048 - authorization enforcement)
+	if !h.checkIsFacilitator(c) {
+		return // checkIsFacilitator already sends the error response
 	}
 
 	results, err := h.resultsService.CalculateResults(projectID)
@@ -50,7 +55,7 @@ func (h *Handler) GetResults(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// ExportResults handles GET /api/projects/{id}/results/export?format=csv|json|jira
+// ExportResults handles GET /api/projects/{id}/results/export?format=csv|json|jira (facilitator-only)
 func (h *Handler) ExportResults(c *gin.Context) {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -58,6 +63,11 @@ func (h *Handler) ExportResults(c *gin.Context) {
 			"error": "Invalid project ID",
 		})
 		return
+	}
+
+	// Require facilitator authorization (T048 - authorization enforcement)
+	if !h.checkIsFacilitator(c) {
+		return // checkIsFacilitator already sends the error response
 	}
 
 	formatStr := c.Query("format")

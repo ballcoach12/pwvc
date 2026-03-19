@@ -12,12 +12,12 @@ import (
 
 // FeatureService handles business logic for features
 type FeatureService struct {
-	featureRepo *repository.FeatureRepository
-	projectRepo *repository.ProjectRepository
+	featureRepo repository.FeatureRepository
+	projectRepo repository.ProjectRepository
 }
 
 // NewFeatureService creates a new feature service
-func NewFeatureService(featureRepo *repository.FeatureRepository, projectRepo *repository.ProjectRepository) *FeatureService {
+func NewFeatureService(featureRepo repository.FeatureRepository, projectRepo repository.ProjectRepository) *FeatureService {
 	return &FeatureService{
 		featureRepo: featureRepo,
 		projectRepo: projectRepo,

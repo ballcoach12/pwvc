@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -305,43 +307,139 @@ func PerformanceMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Rate limiting middleware (basic implementation)
+// Enhanced rate limiting middleware with endpoint-specific limits (T047)
 func RateLimitMiddleware() gin.HandlerFunc {
-	// Simple in-memory rate limiter
+	// In-memory rate limiter with endpoint-specific limits and backoff
 	// In production, use Redis or a proper rate limiting library
 
 	requests := make(map[string][]time.Time)
-	const maxRequests = 100
-	const timeWindow = time.Minute
+	violations := make(map[string]int) // Track violations for progressive penalties
+
+	// Define rate limits per endpoint pattern
+	rateLimits := map[string]RateLimit{
+		"/api/projects/*/pairwise/votes":  {60, time.Minute},  // Hot endpoint - voting
+		"/api/projects/*/scores/*":        {120, time.Minute}, // Hot endpoint - scoring
+		"/api/projects/*/consensus/*":     {30, time.Minute},  // Consensus operations
+		"/api/projects/*/progress/*":      {10, time.Minute},  // Phase changes (facilitator)
+		"/api/projects/*/audit/*":         {20, time.Minute},  // Audit operations (facilitator)
+		"/api/projects/*/results/export":  {5, time.Minute},   // Export operations
+		"/api/projects/*/features/import": {3, time.Minute},   // Import operations
+		"default":                         {100, time.Minute}, // Default limit
+	}
 
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
+		path := c.Request.URL.Path
 		now := time.Now()
 
+		// Find applicable rate limit
+		limit := getRateLimitForPath(path, rateLimits)
+
+		// Apply progressive penalty based on violations
+		violationCount := violations[clientIP]
+		adjustedLimit := limit.MaxRequests
+		if violationCount > 0 {
+			// Reduce limit by 20% for each violation (progressive backoff)
+			penaltyFactor := 1.0 - (0.2 * float64(violationCount))
+			if penaltyFactor < 0.1 { // Don't go below 10% of original limit
+				penaltyFactor = 0.1
+			}
+			adjustedLimit = int(float64(limit.MaxRequests) * penaltyFactor)
+		}
+
 		// Clean old requests
-		if times, exists := requests[clientIP]; exists {
+		key := clientIP + ":" + path
+		if times, exists := requests[key]; exists {
 			var validTimes []time.Time
 			for _, t := range times {
-				if now.Sub(t) < timeWindow {
+				if now.Sub(t) < limit.TimeWindow {
 					validTimes = append(validTimes, t)
 				}
 			}
-			requests[clientIP] = validTimes
+			requests[key] = validTimes
 		}
 
 		// Check rate limit
-		if times, exists := requests[clientIP]; exists && len(times) >= maxRequests {
+		if times, exists := requests[key]; exists && len(times) >= adjustedLimit {
+			// Increment violation count
+			violations[clientIP]++
+
+			// Calculate retry-after with exponential backoff
+			retryAfter := time.Duration(violationCount+1) * limit.TimeWindow
+			if retryAfter > 5*time.Minute {
+				retryAfter = 5 * time.Minute // Cap at 5 minutes
+			}
+
+			c.Header("X-RateLimit-Limit", strconv.Itoa(limit.MaxRequests))
+			c.Header("X-RateLimit-Remaining", "0")
+			c.Header("X-RateLimit-Reset", strconv.FormatInt(now.Add(retryAfter).Unix(), 10))
+			c.Header("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+
 			c.JSON(429, gin.H{
-				"error":       "Rate limit exceeded",
-				"retry_after": timeWindow.Seconds(),
+				"error":           "Rate limit exceeded",
+				"retry_after":     retryAfter.Seconds(),
+				"limit":           limit.MaxRequests,
+				"window":          limit.TimeWindow.String(),
+				"violation_count": violationCount,
+				"message":         "Rate limit violations result in progressive penalties. Please implement backoff strategies.",
 			})
 			c.Abort()
 			return
 		}
 
 		// Add current request
-		requests[clientIP] = append(requests[clientIP], now)
+		requests[key] = append(requests[key], now)
+
+		// Set rate limit headers for successful requests
+		remaining := adjustedLimit - len(requests[key])
+		c.Header("X-RateLimit-Limit", strconv.Itoa(limit.MaxRequests))
+		c.Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
+		c.Header("X-RateLimit-Reset", strconv.FormatInt(now.Add(limit.TimeWindow).Unix(), 10))
 
 		c.Next()
 	}
+}
+
+// RateLimit defines rate limiting parameters
+type RateLimit struct {
+	MaxRequests int
+	TimeWindow  time.Duration
+}
+
+// getRateLimitForPath matches request path to appropriate rate limit
+func getRateLimitForPath(path string, limits map[string]RateLimit) RateLimit {
+	// Simple pattern matching - in production use a router or regex
+	for pattern, limit := range limits {
+		if pattern == "default" {
+			continue
+		}
+		// Basic wildcard matching for /* patterns
+		if matchesPattern(path, pattern) {
+			return limit
+		}
+	}
+	return limits["default"]
+}
+
+// matchesPattern performs basic wildcard matching
+func matchesPattern(path, pattern string) bool {
+	// Replace */ with a regex-like pattern and check
+	// This is a simplified implementation
+	if strings.Contains(pattern, "*/") {
+		// Split pattern and check segments
+		patternParts := strings.Split(pattern, "/")
+		pathParts := strings.Split(path, "/")
+
+		if len(patternParts) != len(pathParts) {
+			return false
+		}
+
+		for i, part := range patternParts {
+			if part != "*" && part != pathParts[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return path == pattern
 }

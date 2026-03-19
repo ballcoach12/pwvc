@@ -8,18 +8,20 @@ import (
 )
 
 type ProgressService struct {
-	progressRepo *repository.ProgressRepository
-	projectRepo  *repository.ProjectRepository
-	attendeeRepo *repository.AttendeeRepository
-	featureRepo  *repository.FeatureRepository
+	progressRepo repository.ProgressRepository
+	projectRepo  repository.ProjectRepository
+	attendeeRepo repository.AttendeeRepository
+	featureRepo  repository.FeatureRepository
+	scoringRepo  repository.ScoringRepository
 }
 
-func NewProgressService(progressRepo *repository.ProgressRepository, projectRepo *repository.ProjectRepository, attendeeRepo *repository.AttendeeRepository, featureRepo *repository.FeatureRepository) *ProgressService {
+func NewProgressService(progressRepo repository.ProgressRepository, projectRepo repository.ProjectRepository, attendeeRepo repository.AttendeeRepository, featureRepo repository.FeatureRepository, scoringRepo repository.ScoringRepository) *ProgressService {
 	return &ProgressService{
 		progressRepo: progressRepo,
 		projectRepo:  projectRepo,
 		attendeeRepo: attendeeRepo,
 		featureRepo:  featureRepo,
+		scoringRepo:  scoringRepo,
 	}
 }
 
@@ -189,4 +191,112 @@ func (s *ProgressService) GetAvailablePhases(projectID int) ([]domain.WorkflowPh
 	}
 
 	return availablePhases, nil
+}
+
+// GetFibonacciProgressMetrics retrieves progress metrics for Fibonacci scoring phases (T040 - US8)
+func (s *ProgressService) GetFibonacciProgressMetrics(projectID int, criterionType string) (*domain.FibonacciProgressMetrics, error) {
+	// Get all features for the project
+	features, err := s.featureRepo.GetByProjectID(projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project features: %w", err)
+	}
+
+	// Get all attendees for the project
+	attendees, err := s.attendeeRepo.GetByProjectID(projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project attendees: %w", err)
+	}
+
+	// Get all scores for the project and criterion type
+	scores, err := s.scoringRepo.GetByProject(projectID, criterionType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project scores: %w", err)
+	}
+
+	// Calculate metrics
+	totalExpectedScores := len(features) * len(attendees)
+	completedScores := len(scores)
+	progressPercentage := 0.0
+	if totalExpectedScores > 0 {
+		progressPercentage = float64(completedScores) / float64(totalExpectedScores) * 100.0
+	}
+
+	// Calculate per-feature completion
+	featureCompletion := make(map[int]domain.FeatureScoreProgress)
+	for _, feature := range features {
+		featureScores := 0
+		for _, score := range scores {
+			if score.FeatureID == feature.ID {
+				featureScores++
+			}
+		}
+		featureCompletion[feature.ID] = domain.FeatureScoreProgress{
+			FeatureID:           feature.ID,
+			FeatureName:         feature.Title,
+			CompletedScores:     featureScores,
+			TotalExpectedScores: len(attendees),
+			ProgressPercentage:  float64(featureScores) / float64(len(attendees)) * 100.0,
+		}
+	}
+
+	// Calculate per-attendee completion
+	attendeeCompletion := make(map[int]domain.AttendeeScoreProgress)
+	for _, attendee := range attendees {
+		attendeeScores := 0
+		for _, score := range scores {
+			if score.AttendeeID == attendee.ID {
+				attendeeScores++
+			}
+		}
+		attendeeCompletion[attendee.ID] = domain.AttendeeScoreProgress{
+			AttendeeID:          attendee.ID,
+			AttendeeName:        attendee.Name,
+			CompletedScores:     attendeeScores,
+			TotalExpectedScores: len(features),
+			ProgressPercentage:  float64(attendeeScores) / float64(len(features)) * 100.0,
+		}
+	}
+
+	return &domain.FibonacciProgressMetrics{
+		ProjectID:           projectID,
+		CriterionType:       criterionType,
+		CompletedScores:     completedScores,
+		TotalExpectedScores: totalExpectedScores,
+		ProgressPercentage:  progressPercentage,
+		FeatureCompletion:   featureCompletion,
+		AttendeeCompletion:  attendeeCompletion,
+	}, nil
+}
+
+// GetOverallFibonacciProgress gets combined progress for both value and complexity scoring (T040 - US8)
+func (s *ProgressService) GetOverallFibonacciProgress(projectID int) (*domain.OverallFibonacciProgress, error) {
+	valueMetrics, err := s.GetFibonacciProgressMetrics(projectID, "value")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get value metrics: %w", err)
+	}
+
+	complexityMetrics, err := s.GetFibonacciProgressMetrics(projectID, "complexity")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get complexity metrics: %w", err)
+	}
+
+	// Calculate overall progress
+	totalCompleted := valueMetrics.CompletedScores + complexityMetrics.CompletedScores
+	totalExpected := valueMetrics.TotalExpectedScores + complexityMetrics.TotalExpectedScores
+	overallProgress := 0.0
+	if totalExpected > 0 {
+		overallProgress = float64(totalCompleted) / float64(totalExpected) * 100.0
+	}
+
+	return &domain.OverallFibonacciProgress{
+		ProjectID:            projectID,
+		ValueMetrics:         valueMetrics,
+		ComplexityMetrics:    complexityMetrics,
+		OverallProgress:      overallProgress,
+		TotalCompleted:       totalCompleted,
+		TotalExpected:        totalExpected,
+		IsValueComplete:      valueMetrics.ProgressPercentage >= 100.0,
+		IsComplexityComplete: complexityMetrics.ProgressPercentage >= 100.0,
+		IsBothComplete:       valueMetrics.ProgressPercentage >= 100.0 && complexityMetrics.ProgressPercentage >= 100.0,
+	}, nil
 }

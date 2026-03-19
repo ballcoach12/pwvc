@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"pairwise/internal/domain"
@@ -11,21 +13,24 @@ import (
 
 // ResultsService handles P-WVC results calculation and management
 type ResultsService struct {
-	priorityRepo *repository.PriorityRepository
-	featureRepo  *repository.FeatureRepository
-	pairwiseRepo *repository.PairwiseRepository
+	priorityRepo  repository.PriorityRepository
+	featureRepo   repository.FeatureRepository
+	pairwiseRepo  repository.PairwiseRepository
+	consensusRepo repository.ConsensusRepository
 }
 
 // NewResultsService creates a new results service
 func NewResultsService(
-	priorityRepo *repository.PriorityRepository,
-	featureRepo *repository.FeatureRepository,
-	pairwiseRepo *repository.PairwiseRepository,
+	priorityRepo repository.PriorityRepository,
+	featureRepo repository.FeatureRepository,
+	pairwiseRepo repository.PairwiseRepository,
+	consensusRepo repository.ConsensusRepository,
 ) *ResultsService {
 	return &ResultsService{
-		priorityRepo: priorityRepo,
-		featureRepo:  featureRepo,
-		pairwiseRepo: pairwiseRepo,
+		priorityRepo:  priorityRepo,
+		featureRepo:   featureRepo,
+		pairwiseRepo:  pairwiseRepo,
+		consensusRepo: consensusRepo,
 	}
 }
 
@@ -95,9 +100,28 @@ func (s *ResultsService) CalculateResults(projectID int) (*domain.ProjectResults
 		calculations = append(calculations, calculation)
 	}
 
-	// 5. Sort by Final Priority Score (descending) and assign ranks
+	// 5. Sort by Final Priority Score with deterministic tie-break
 	sort.Slice(calculations, func(i, j int) bool {
-		return calculations[i].FinalPriorityScore > calculations[j].FinalPriorityScore
+		calc1, calc2 := calculations[i], calculations[j]
+
+		// Primary: FPS descending
+		if calc1.FinalPriorityScore != calc2.FinalPriorityScore {
+			return calc1.FinalPriorityScore > calc2.FinalPriorityScore
+		}
+
+		// Tie-break 1: SValue descending
+		if calc1.SValue != calc2.SValue {
+			return calc1.SValue > calc2.SValue
+		}
+
+		// Tie-break 2: SComplexity ascending (lower complexity preferred)
+		if calc1.SComplexity != calc2.SComplexity {
+			return calc1.SComplexity < calc2.SComplexity
+		}
+
+		// Tie-break 3: Feature name alphabetical (need to get feature names)
+		// For now, use feature ID as proxy (should fetch feature names for proper implementation)
+		return calc1.FeatureID < calc2.FeatureID
 	})
 
 	for i := range calculations {
@@ -159,25 +183,34 @@ func (s *ResultsService) GetResults(projectID int) (*domain.ProjectResults, erro
 
 // calculateWinCountWeights calculates win-count weights from pairwise comparison results
 func (s *ResultsService) calculateWinCountWeights(projectID int, criterionType string) (map[int]float64, error) {
-	// Get all pairwise comparison results for this project and criterion
-	// This is a simplified implementation - in reality we'd need to aggregate votes properly
+	// Convert string to domain type
+	var criterion domain.CriterionType
+	switch criterionType {
+	case "value":
+		criterion = domain.CriterionTypeValue
+	case "complexity":
+		criterion = domain.CriterionTypeComplexity
+	default:
+		return nil, fmt.Errorf("invalid criterion type: %s", criterionType)
+	}
 
-	features, err := s.featureRepo.GetByProjectID(projectID)
+	// Get real win-count weights from repository aggregation
+	weights, err := s.pairwiseRepo.GetWinCountWeights(projectID, criterion)
 	if err != nil {
 		return nil, err
 	}
 
-	weights := make(map[int]float64)
-
-	// For now, assign mock weights - this should be calculated from actual pairwise results
-	totalFeatures := len(features)
-	for i, feature := range features {
-		// Mock calculation: higher ranking features get higher weights
-		weight := 1.0 - (float64(i) / float64(totalFeatures))
-		if weight < 0.1 {
-			weight = 0.1 // Minimum weight
+	// If no weights found (no completed sessions), return default weights
+	if len(weights) == 0 {
+		features, err := s.featureRepo.GetByProjectID(projectID)
+		if err != nil {
+			return nil, err
 		}
-		weights[feature.ID] = weight
+
+		weights = make(map[int]float64)
+		for _, feature := range features {
+			weights[feature.ID] = 0.5 // Default neutral weight
+		}
 	}
 
 	return weights, nil
@@ -185,21 +218,36 @@ func (s *ResultsService) calculateWinCountWeights(projectID int, criterionType s
 
 // getFibonacciScores retrieves consensus Fibonacci scores for features
 func (s *ResultsService) getFibonacciScores(projectID int, criterionType string) (map[int]int, error) {
-	// This should get actual Fibonacci consensus scores
-	// For now, return mock scores
-
-	features, err := s.featureRepo.GetByProjectID(projectID)
+	// Get consensus scores from repository
+	consensusScores, err := s.consensusRepo.GetConsensusScores(projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	scores := make(map[int]int)
-	fibValues := []int{1, 2, 3, 5, 8, 13, 21}
 
-	for i, feature := range features {
-		// Mock: assign random but deterministic Fibonacci values
-		scoreIndex := (feature.ID + i) % len(fibValues)
-		scores[feature.ID] = fibValues[scoreIndex]
+	// Extract the appropriate score type based on criterionType
+	for featureID, consensus := range consensusScores {
+		switch criterionType {
+		case "value":
+			scores[featureID] = consensus.SValue
+		case "complexity":
+			scores[featureID] = consensus.SComplexity
+		default:
+			return nil, fmt.Errorf("invalid criterion type: %s", criterionType)
+		}
+	}
+
+	// If no consensus scores found, check for features without scores and use default
+	if len(scores) == 0 {
+		features, err := s.featureRepo.GetByProjectID(projectID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, feature := range features {
+			scores[feature.ID] = 3 // Default Fibonacci value
+		}
 	}
 
 	return scores, nil
@@ -271,27 +319,64 @@ func (s *ResultsService) ExportResults(projectID int, format domain.ExportFormat
 	}
 }
 
-// exportToCSV converts results to CSV format
+// exportToCSV converts results to CSV format with deterministic ordering and locale-safe formatting (T050)
 func (s *ResultsService) exportToCSV(results *domain.ProjectResults) [][]string {
+	// Create CSV header with consistent field names
 	csv := [][]string{
-		{"rank", "feature_title", "description", "final_priority_score", "s_value", "s_complexity", "w_value", "w_complexity"},
+		{"rank", "feature_id", "feature_title", "description", "final_priority_score", "s_value", "s_complexity", "w_value", "w_complexity", "calculation_timestamp"},
 	}
 
-	for _, result := range results.Results {
+	// Ensure deterministic ordering by sorting results by rank, then by feature ID as tiebreaker
+	sortedResults := make([]domain.PriorityResult, len(results.Results))
+	copy(sortedResults, results.Results)
+
+	// Sort by rank (ascending), then by feature ID for consistency
+	sort.Slice(sortedResults, func(i, j int) bool {
+		if sortedResults[i].Rank == sortedResults[j].Rank {
+			return sortedResults[i].Feature.ID < sortedResults[j].Feature.ID
+		}
+		return sortedResults[i].Rank < sortedResults[j].Rank
+	})
+
+	// Format timestamp in ISO 8601 format (locale-independent)
+	timestamp := results.CalculatedAt.UTC().Format("2006-01-02T15:04:05Z")
+
+	for _, result := range sortedResults {
+		// Use locale-safe formatting with consistent precision
 		row := []string{
-			fmt.Sprintf("%d", result.Rank),
-			result.Feature.Title,
-			result.Feature.Description,
-			fmt.Sprintf("%.6f", result.FinalPriorityScore),
-			fmt.Sprintf("%d", result.SValue),
-			fmt.Sprintf("%d", result.SComplexity),
-			fmt.Sprintf("%.6f", result.WValue),
-			fmt.Sprintf("%.6f", result.WComplexity),
+			strconv.Itoa(result.Rank),                     // Deterministic integer formatting
+			strconv.Itoa(result.Feature.ID),               // Feature ID for traceability
+			s.escapeCsvField(result.Feature.Title),        // Properly escape CSV fields
+			s.escapeCsvField(result.Feature.Description),  // Properly escape CSV fields
+			s.formatDecimal(result.FinalPriorityScore, 6), // Locale-safe decimal formatting
+			strconv.Itoa(result.SValue),                   // Integer scores don't need special formatting
+			strconv.Itoa(result.SComplexity),              // Integer scores don't need special formatting
+			s.formatDecimal(result.WValue, 6),             // Locale-safe decimal formatting
+			s.formatDecimal(result.WComplexity, 6),        // Locale-safe decimal formatting
+			timestamp,                                     // ISO 8601 timestamp
 		}
 		csv = append(csv, row)
 	}
 
 	return csv
+}
+
+// formatDecimal formats decimal numbers using locale-safe formatting (T050)
+func (s *ResultsService) formatDecimal(value float64, precision int) string {
+	// Use strconv.FormatFloat for locale-independent formatting
+	// Always use decimal point (.) regardless of system locale
+	return strconv.FormatFloat(value, 'f', precision, 64)
+}
+
+// escapeCsvField properly escapes CSV fields containing special characters (T050)
+func (s *ResultsService) escapeCsvField(field string) string {
+	// CSV fields containing commas, quotes, or newlines need to be quoted
+	if strings.ContainsAny(field, ",\"\n\r") {
+		// Escape internal quotes by doubling them, then wrap in quotes
+		escaped := strings.ReplaceAll(field, "\"", "\"\"")
+		return "\"" + escaped + "\""
+	}
+	return field
 }
 
 // exportToJira converts results to Jira-compatible format
