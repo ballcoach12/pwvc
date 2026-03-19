@@ -32,7 +32,7 @@ services:
       UPLOAD_PATH: ${UPLOAD_PATH:-./uploads}
       
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8085}:8080"
     volumes:
       - sqlite_data:/home/pairwise/data
       - backend_uploads:/home/pairwise/uploads
@@ -54,11 +54,11 @@ services:
       dockerfile: Dockerfile
     container_name: pairwise-frontend
     environment:
-      # Runtime configuration
-      API_URL: ${API_URL:-http://localhost:8080/api}
-      WEBSOCKET_URL: ${WEBSOCKET_URL:-ws://localhost:8080/api/ws}
+      # Runtime configuration - use relative paths for nginx proxy
+      API_URL: ${API_URL:-/api}
+      WEBSOCKET_URL: ${WEBSOCKET_URL:-ws://localhost:3005/api/ws}
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3005}:80"
     networks:
       - pairwise-network
     depends_on:
