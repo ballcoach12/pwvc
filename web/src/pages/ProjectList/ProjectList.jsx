@@ -16,11 +16,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSnackbar } from '../../components/NotificationProvider.jsx'
 import ProjectCard from '../../components/ProjectCard/ProjectCard.jsx'
+import { useAuth } from '../../hooks/useAuth'
 import { projectService } from '../../services/projectService.js'
 
 const ProjectList = () => {
   const navigate = useNavigate()
   const { enqueueSnackbar } = useSnackbar()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,8 +30,14 @@ const ProjectList = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, project: null })
 
   useEffect(() => {
-    loadProjects()
-  }, [])
+    // Only load projects if authentication check is complete and user is authenticated
+    if (!authLoading && isAuthenticated()) {
+      loadProjects()
+    } else if (!authLoading && !isAuthenticated()) {
+      // If not authenticated, the ProtectedRoute will handle the redirect
+      setLoading(false)
+    }
+  }, [authLoading, isAuthenticated])
 
   const loadProjects = async () => {
     try {

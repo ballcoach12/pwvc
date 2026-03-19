@@ -34,16 +34,17 @@ func (h *Handler) LockConsensusScore(c *gin.Context) {
 		return
 	}
 
-	// Get facilitator ID from context
-	facilitatorID, exists := c.Get("attendee_id")
+	// Get facilitator ID from context (set by JWT middleware as user_id)
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Facilitator ID not found in context",
 		})
 		return
 	}
+	facilitatorID := int(userID.(uint))
 
-	consensus, err := h.consensusService.LockConsensusScore(projectID, req.FeatureID, facilitatorID.(int), req.SValue, req.SComplexity, req.Rationale)
+	consensus, err := h.consensusService.LockConsensusScore(projectID, req.FeatureID, facilitatorID, req.SValue, req.SComplexity, req.Rationale)
 	if err != nil {
 		if apiErr, ok := err.(*domain.APIError); ok {
 			c.JSON(apiErr.Code, gin.H{
@@ -60,7 +61,7 @@ func (h *Handler) LockConsensusScore(c *gin.Context) {
 
 	// Audit log the consensus lock action (T043 - US9)
 	if h.auditService != nil {
-		err = h.auditService.LogConsensusAction(projectID, facilitatorID.(int), req.FeatureID, "consensus_locked", req.SValue, req.SComplexity, req.Rationale)
+		err = h.auditService.LogConsensusAction(projectID, facilitatorID, req.FeatureID, "consensus_locked", req.SValue, req.SComplexity, req.Rationale)
 		if err != nil {
 			// Log error but don't fail the request
 			// TODO: Add proper logging
@@ -100,16 +101,17 @@ func (h *Handler) UnlockConsensusScore(c *gin.Context) {
 		return
 	}
 
-	// Get facilitator ID from context
-	facilitatorID, exists := c.Get("attendee_id")
+	// Get facilitator ID from context (set by JWT middleware as user_id)
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Facilitator ID not found in context",
 		})
 		return
 	}
+	facilitatorID := int(userID.(uint))
 
-	err = h.consensusService.UnlockConsensusScore(projectID, req.FeatureID, facilitatorID.(int))
+	err = h.consensusService.UnlockConsensusScore(projectID, req.FeatureID, facilitatorID)
 	if err != nil {
 		if apiErr, ok := err.(*domain.APIError); ok {
 			c.JSON(apiErr.Code, gin.H{
@@ -126,7 +128,7 @@ func (h *Handler) UnlockConsensusScore(c *gin.Context) {
 
 	// Audit log the consensus unlock action (T043 - US9)
 	if h.auditService != nil {
-		err = h.auditService.LogConsensusAction(projectID, facilitatorID.(int), req.FeatureID, "consensus_unlocked", 0, 0, "")
+		err = h.auditService.LogConsensusAction(projectID, facilitatorID, req.FeatureID, "consensus_unlocked", 0, 0, "")
 		if err != nil {
 			// Log error but don't fail the request
 			// TODO: Add proper logging

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"pairwise/internal/api/middleware"
 	"pairwise/internal/domain"
 	"pairwise/internal/repository"
 	"pairwise/internal/service"
@@ -25,9 +26,13 @@ type Handler struct {
 	scoringService   *service.ScoringService
 	consensusService *service.ConsensusService
 	auditService     *service.AuditService
+	authService      *service.AuthService
+	jwtService       *service.JWTService
 	wsHub            *websocket.Hub
 	priorityRepo     repository.PriorityRepository
 	attendeeRepo     repository.AttendeeRepository
+	userRepo         repository.UserRepository
+	roleRepo         repository.RoleRepository
 }
 
 // NewHandler creates a new API handler with the required services
@@ -42,8 +47,12 @@ func NewHandler(
 	scoringService *service.ScoringService,
 	consensusService *service.ConsensusService,
 	auditService *service.AuditService,
+	authService *service.AuthService,
+	jwtService *service.JWTService,
 	priorityRepo repository.PriorityRepository,
 	attendeeRepo repository.AttendeeRepository,
+	userRepo repository.UserRepository,
+	roleRepo repository.RoleRepository,
 	hub *websocket.Hub,
 ) *Handler {
 	return &Handler{
@@ -57,34 +66,51 @@ func NewHandler(
 		scoringService:   scoringService,
 		consensusService: consensusService,
 		auditService:     auditService,
+		authService:      authService,
+		jwtService:       jwtService,
 		priorityRepo:     priorityRepo,
 		attendeeRepo:     attendeeRepo,
+		userRepo:         userRepo,
+		roleRepo:         roleRepo,
 		wsHub:            hub,
 	}
 }
 
 // RegisterRoutes sets up all the API routes
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
-	api := router.Group("/api")
+	// Create middleware instance
+	authMiddleware := middleware.NewAuthMiddleware(h.jwtService)
+
+	api := router.Group("/api/v1")
 	{
 		// Authentication endpoints (public - no auth required)
 		auth := api.Group("/auth")
 		{
-			auth.POST("/login", h.LoginGlobal) // New global login endpoint
+			auth.POST("/login", h.Login)
+			auth.POST("/logout", h.Logout)
 		}
 
-		// PIN management endpoints (public - no auth required)
-		api.POST("/setup-pin", h.SetupPin)
+		// Protected endpoints requiring authentication
+		protected := api.Group("")
+		protected.Use(authMiddleware.JWTAuth())
+		{
+			// Current user endpoint
+			protected.GET("/auth/me", h.GetCurrentUser)
+		}
 
-		// Public project join endpoints (no auth required)
-		api.POST("/join/:invite_code", h.JoinProjectByInvite)
-
-		// Public project-specific login endpoint (for backwards compatibility)
-		api.POST("/projects/:id/attendees/login", h.LoginAttendee)
+		// Admin endpoints requiring admin role
+		admin := protected.Group("/admin")
+		admin.Use(authMiddleware.RequireRole("admin"))
+		{
+			admin.GET("/users", h.ListUsers)
+			admin.POST("/users", h.CreateUser)
+			admin.GET("/users/:id", h.GetUser)
+			admin.PUT("/users/:id", h.UpdateUser)
+			admin.GET("/roles", h.ListRoles)
+		}
 
 		// Project endpoints (require authentication)
-		projects := api.Group("/projects")
-		projects.Use(h.RequireAuth()) // Require authentication for all project endpoints
+		projects := protected.Group("/projects")
 		{
 			projects.GET("", h.GetProjects)
 			projects.POST("", h.CreateProject)
@@ -170,6 +196,34 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	h.registerHealthEndpoints(router)
 }
 
+// RequireAuth returns JWT authentication middleware for use in route groups
+func (h *Handler) RequireAuth() gin.HandlerFunc {
+	authMiddleware := middleware.NewAuthMiddleware(h.jwtService)
+	return authMiddleware.JWTAuth()
+}
+
+// checkIsFacilitator verifies the JWT user has admin or user role (not viewer-only).
+// Returns false and writes an error response if the check fails.
+func (h *Handler) checkIsFacilitator(c *gin.Context) bool {
+	roles, exists := c.Get("roles")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return false
+	}
+	roleSlice, ok := roles.([]string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid authentication data"})
+		return false
+	}
+	for _, r := range roleSlice {
+		if r == "admin" || r == "user" {
+			return true
+		}
+	}
+	c.JSON(http.StatusForbidden, gin.H{"error": "Facilitator role required"})
+	return false
+}
+
 // registerHealthEndpoints adds health check endpoints
 func (h *Handler) registerHealthEndpoints(router *gin.Engine) {
 	// Basic health check
@@ -224,9 +278,9 @@ func (h *Handler) AdvancePhase(c *gin.Context) {
 
 	// If successful, log the phase change (check if response was successful)
 	if c.Writer.Status() == http.StatusOK {
-		facilitatorID, exists := c.Get("attendee_id")
+		facilitatorID, exists := c.Get("user_id")
 		if exists && h.auditService != nil {
-			err = h.auditService.LogPhaseChangeAction(projectID, facilitatorID.(int), oldPhase, request.Phase)
+			err = h.auditService.LogPhaseChangeAction(projectID, int(facilitatorID.(uint)), oldPhase, request.Phase)
 			if err != nil {
 				// Log error but don't fail the request
 				// TODO: Add proper logging

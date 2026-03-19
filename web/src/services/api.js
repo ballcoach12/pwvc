@@ -45,7 +45,8 @@ class APIClient {
     const requestConfig = {
       method,
       headers: requestHeaders,
-      signal: signal || (timeout ? AbortSignal.timeout(timeout) : undefined)
+      signal: signal || (timeout ? AbortSignal.timeout(timeout) : undefined),
+      credentials: options.credentials || 'include' // Include cookies by default for auth
     }
 
     // Add body for non-GET requests
@@ -378,28 +379,34 @@ export const api = {
   // System
   health: () => apiClient.healthCheck(),
 
-  // Authentication
+  // Authentication (JWT-based system)
   auth: {
-    login: (projectId, attendeeId, pin) => api.attendees.login(projectId, attendeeId, pin),
-    logout: () => {
-      // Clear authentication from storage
-      sessionStorage.removeItem('pairwise_auth_token')
-      sessionStorage.removeItem('pairwise_current_attendee')
-    },
-    getCurrentAttendee: () => {
-      try {
-        const attendeeJson = sessionStorage.getItem('pairwise_current_attendee')
-        return attendeeJson ? JSON.parse(attendeeJson) : null
-      } catch {
-        return null
-      }
-    },
-    setCurrentAttendee: (attendee, token) => {
-      sessionStorage.setItem('pairwise_current_attendee', JSON.stringify(attendee))
-      sessionStorage.setItem('pairwise_auth_token', token)
-    },
-    getToken: () => sessionStorage.getItem('pairwise_auth_token'),
-    isAuthenticated: () => !!sessionStorage.getItem('pairwise_auth_token')
+    login: (credentials) => apiClient.post('/v1/auth/login', {
+      username: credentials.username,
+      password: credentials.password
+    }, { skipRetry: true }),
+    logout: () => apiClient.post('/v1/auth/logout', null, { skipRetry: true }),
+    getCurrentUser: () => apiClient.get('/v1/auth/me', { skipRetry: true }),
+  },
+
+  // Admin endpoints (require admin role)
+  admin: {
+    getUsers: (params = {}) => apiClient.get('/admin/users', { 
+      credentials: 'include',
+      params 
+    }),
+    createUser: (userData) => apiClient.post('/admin/users', userData, { 
+      credentials: 'include' 
+    }),
+    getUser: (userId) => apiClient.get(`/admin/users/${userId}`, { 
+      credentials: 'include' 
+    }),
+    updateUser: (userId, userData) => apiClient.put(`/admin/users/${userId}`, userData, { 
+      credentials: 'include' 
+    }),
+    getRoles: () => apiClient.get('/admin/roles', { 
+      credentials: 'include' 
+    })
   }
 }
 

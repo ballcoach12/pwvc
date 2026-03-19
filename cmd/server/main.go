@@ -41,6 +41,13 @@ func main() {
 	var scoringRepo repository.ScoringRepository = repository.NewScoringRepository(db)       // Uses GORM
 	var consensusRepo repository.ConsensusRepository = repository.NewConsensusRepository(db) // Uses GORM
 
+	// Initialize JWT authentication repositories and services
+	var userRepo repository.UserRepository = repository.NewUserRepository(db)
+	var roleRepo repository.RoleRepository = repository.NewRoleRepository(db)
+	jwtService := service.NewJWTService()
+	authService := service.NewAuthService(userRepo, jwtService)
+	_ = service.NewUserService(userRepo, roleRepo, authService) // TODO: Will be used for admin endpoints
+
 	// Initialize services
 	projectService := service.NewProjectService(projectRepo)
 	attendeeService := service.NewAttendeeService(attendeeRepo)
@@ -71,8 +78,12 @@ func main() {
 		scoringService,
 		consensusService,
 		auditService,
+		authService,
+		jwtService,
 		priorityRepo,
 		attendeeRepo,
+		userRepo,
+		roleRepo,
 		wsHub,
 	)
 
@@ -91,6 +102,89 @@ func main() {
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
+}
+
+func seedRoles(db *gorm.DB) error {
+	// Seed predefined roles if they don't exist
+	for _, role := range domain.PredefinedRoles {
+		var existingRole domain.Role
+		result := db.Where("name = ?", role.Name).First(&existingRole)
+		if result.Error != nil && result.Error.Error() == "record not found" {
+			// Role doesn't exist, create it
+			if err := db.Create(&role).Error; err != nil {
+				return err
+			}
+			log.Printf("Created role: %s", role.Name)
+		}
+	}
+	return nil
+}
+
+func createDefaultUsers(db *gorm.DB) error {
+	// Initialize repositories and services for user creation
+	userRepo := repository.NewUserRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
+	jwtService := service.NewJWTService()
+	authService := service.NewAuthService(userRepo, jwtService)
+
+	// Default users to create
+	defaultUsers := []struct {
+		username string
+		password string
+		email    string
+		roles    []string
+	}{
+		{"admin", "admin123", "admin@pairwise.local", []string{"admin"}},
+		{"user", "user123", "user@pairwise.local", []string{"user"}},
+		{"viewer", "viewer123", "viewer@pairwise.local", []string{"viewer"}},
+	}
+
+	for _, userData := range defaultUsers {
+		// Check if user already exists
+		existingUser, err := userRepo.GetUserByUsername(userData.username)
+		if err == nil && existingUser != nil {
+			continue // User already exists, skip
+		}
+
+		// Hash password
+		hashedPassword, err := authService.HashPassword(userData.password)
+		if err != nil {
+			log.Printf("Warning: Failed to hash password for user '%s': %v", userData.username, err)
+			continue
+		}
+
+		// Create user
+		user := &domain.User{
+			Username:     userData.username,
+			Email:        userData.email,
+			PasswordHash: hashedPassword,
+			IsActive:     true,
+		}
+
+		err = userRepo.CreateUser(user)
+		if err != nil {
+			log.Printf("Warning: Failed to create user '%s': %v", userData.username, err)
+			continue
+		}
+
+		// Assign roles
+		for _, roleName := range userData.roles {
+			role, err := roleRepo.GetRoleByName(roleName)
+			if err != nil {
+				log.Printf("Warning: Role '%s' not found for user '%s'", roleName, userData.username)
+				continue
+			}
+
+			err = roleRepo.AssignRoleToUser(user.ID, role.ID, nil)
+			if err != nil {
+				log.Printf("Warning: Failed to assign role '%s' to user '%s': %v", roleName, userData.username, err)
+			}
+		}
+
+		log.Printf("Created default user: %s", userData.username)
+	}
+
+	return nil
 }
 
 func initDB() (*gorm.DB, error) {
@@ -117,9 +211,25 @@ func initDB() (*gorm.DB, error) {
 		&domain.FibonacciScore{}, // T030 - US4
 		&domain.ConsensusScore{}, // T034 - US5
 		&domain.AuditLog{},       // T043 - US9
+		// JWT Authentication models
+		&domain.User{},     // System users with authentication
+		&domain.Role{},     // Permission roles
+		&domain.UserRole{}, // User-role junction table
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Seed predefined roles
+	err = seedRoles(db)
+	if err != nil {
+		log.Printf("Warning: Failed to seed roles: %v", err)
+	}
+
+	// Create default users
+	err = createDefaultUsers(db)
+	if err != nil {
+		log.Printf("Warning: Failed to create default users: %v", err)
 	}
 
 	log.Println("Successfully connected to SQLite database")
@@ -134,17 +244,10 @@ func setupRouter(apiHandler *api.Handler) *gin.Engine {
 
 	router := gin.New()
 
-	// Initialize logger
-	logger := api.NewLogger()
-
-	// Add middleware
-	router.Use(logger.LoggingMiddleware())  // Use structured logging
-	router.Use(api.RecoveryMiddleware())    // Use custom recovery middleware
-	router.Use(api.RequestIDMiddleware())   // Add request ID tracking
-	router.Use(api.PerformanceMiddleware()) // Add performance monitoring
+	// Add basic middleware
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
-	router.Use(api.ValidationMiddleware()) // Add validation middleware
-	router.Use(api.RateLimitMiddleware())  // Add basic rate limiting
 
 	// Root endpoint
 	router.GET("/", func(c *gin.Context) {
@@ -154,7 +257,7 @@ func setupRouter(apiHandler *api.Handler) *gin.Engine {
 		})
 	})
 
-	// API routes
+	// API routes (includes authentication routes)
 	apiHandler.RegisterRoutes(router)
 
 	return router

@@ -23,23 +23,23 @@ This document outlines implementation tasks organized by user story priority, en
 
 ### Backend Setup
 
-- [ ] T001 Install JWT dependencies: golang-jwt/jwt/v4 and golang.org/x/crypto/bcrypt in go.mod
-- [ ] T002 [P] Add JWT configuration to environment variables in .env (JWT_SECRET, JWT_ISSUER)
-- [ ] T003 [P] Create internal/domain/auth.go with JWTClaims struct and LoginRequest struct
-- [ ] T004 [P] Create internal/service/jwt.go with NewJWTService, GenerateToken, and ValidateToken methods
+- [x] T001 Install JWT dependencies: golang-jwt/jwt/v4 and golang.org/x/crypto/bcrypt in go.mod
+- [x] T002 [P] Add JWT configuration to environment variables in .env (JWT_SECRET, JWT_ISSUER)
+- [x] T003 [P] Create internal/domain/auth.go with JWTClaims struct and LoginRequest struct
+- [x] T004 [P] Create internal/service/jwt.go with NewJWTService, GenerateToken, and ValidateToken methods
 
 ### Frontend Setup
 
-- [ ] T005 [P] Install frontend auth dependencies: js-cookie and @types/js-cookie in web/package.json
-- [ ] T006 [P] Configure axios base URL and default settings in web/src/services/api.js
-- [ ] T007 [P] Create web/src/contexts/AuthContext.jsx with React context structure
+- [x] T005 [P] Install frontend auth dependencies: js-cookie and @types/js-cookie in web/package.json
+- [x] T006 [P] Configure axios base URL and default settings in web/src/services/api.js
+- [x] T007 [P] Create web/src/contexts/AuthContext.jsx with React context structure
 
 ### Database Setup (GORM AutoMigrate)
 
-- [ ] T008 [P] Extend internal/domain/user.go struct with PasswordHash and IsActive fields
-- [ ] T009 [P] Create internal/domain/role.go with Role struct definition
-- [ ] T010 [P] Create internal/domain/user_role.go with UserRole junction struct
-- [ ] T011 Update cmd/server/main.go AutoMigrate call to include User, Role, and UserRole models
+- [x] T008 [P] Extend internal/domain/user.go struct with PasswordHash and IsActive fields
+- [x] T009 [P] Create internal/domain/role.go with Role struct definition
+- [x] T010 [P] Create internal/domain/user_role.go with UserRole junction struct
+- [x] T011 Update cmd/server/main.go AutoMigrate call to include User, Role, and UserRole models
 
 ## Phase 2: Foundational Infrastructure
 
@@ -47,47 +47,44 @@ This document outlines implementation tasks organized by user story priority, en
 
 ### Core Services
 
-- [ ] T012 [P] Implement internal/service/auth.go with Login method and HashPassword method
-- [ ] T013 [P] Create internal/api/middleware/auth.go with JWTAuth middleware for token validation
-- [ ] T014 [P] Create internal/api/middleware/auth.go RequireRole middleware for role-based access control
-- [ ] T015 [P] Extend internal/domain/user.go to add PasswordHash, IsActive fields and Roles relationship
+- [x] T012 [P] Implement internal/service/auth.go with Login method and HashPassword method
+- [x] T013 [P] Create internal/api/middleware/auth.go with JWTAuth middleware for token validation
+- [x] T014 [P] Create internal/api/middleware/auth.go RequireRole middleware for role-based access control
+- [x] T015 [P] Extend internal/service/user.go for user management operations
 
 ### Repository Layer
 
-- [ ] T016 [P] Create internal/repository/role.go with GetAllRoles, GetRoleByName, AssignRoleToUser methods
-- [ ] T017 [P] Extend internal/repository/user.go with GetUserByUsername, LoadUserRoles, UpdateUser methods
-- [ ] T018 [P] Create internal/domain/role.go with Role and UserRole struct definitions
+- [x] T016 [P] Create internal/repository/user.go with user repository interface and GORM implementation
+- [x] T017 [P] Create internal/repository/user.go with role repository interface and methods
+- [x] T018 [P] Create internal/domain/role.go with Role and UserRole struct definitions
 
-### Frontend Core
+### Phase 2: Frontend Core
 
-- [ ] T019 [P] Implement web/src/services/auth.js with login, logout, getCurrentUser API methods
-- [ ] T020 [P] Complete web/src/contexts/AuthContext.jsx with login, logout, hasRole, isAuthenticated methods
-- [ ] T021 [P] Create web/src/hooks/useAuth.js custom hook for consuming auth context
+- [x] **T019**: Implement `web/src/services/auth.js` with login, logout, getCurrentUser API methods
+- [x] **T020**: Complete `web/src/contexts/AuthContext.jsx` with login, logout, hasRole, isAuthenticated methods
+- [x] **T021**: Create `web/src/hooks/useAuth.js` custom hook for consuming auth context
 
-## Phase 3: US1 - User Login Authentication (P1)
+## Phase 3: Backend Authentication
 
-**Goal**: Implement basic login functionality with JWT token authentication.  
-**Independent Test**: Create user account, access site, redirect to login, successful login, access protected content.
+### Backend Authentication (Core JWT endpoints)
 
-### Backend Authentication
-
-- [ ] T022 [US1] Implement internal/api/auth.go Login handler with credential validation and JWT token generation
-- [ ] T023 [US1] Implement internal/api/auth.go Logout handler with cookie clearing
-- [ ] T024 [US1] Implement internal/api/auth.go GetCurrentUser handler for authenticated user profile
-- [ ] T025 [US1] Update cmd/server/main.go to register auth routes: /api/v1/auth/login, /logout, /me
+- [x] **T022**: Implement `internal/api/auth.go` Login handler with credential validation and JWT token generation
+- [x] **T023**: Implement `internal/api/auth.go` Logout handler with cookie clearing
+- [x] **T024**: Implement `internal/api/auth.go` GetCurrentUser handler
+- [x] **T025**: Update `cmd/server/main.go` to register auth routes### Frontend Login Interface
 
 ### Frontend Login Interface
 
-- [ ] T026 [P] [US1] Create web/src/components/auth/LoginForm.jsx with username/password form and error handling
-- [ ] T027 [P] [US1] Create web/src/pages/LoginPage.jsx with centered login form layout
-- [ ] T028 [P] [US1] Create web/src/components/auth/ProtectedRoute.jsx component for route protection
-- [ ] T029 [US1] Update web/src/App.jsx to add login route and protect existing routes with ProtectedRoute
+- [x] **T026**: Create `web/src/components/auth/LoginForm.jsx` with username/password form
+- [x] **T027**: Create `web/src/pages/LoginPage.jsx`
+- [x] **T028**: Create `web/src/components/auth/ProtectedRoute.jsx`
+- [x] **T029**: Update `web/src/App.jsx` to add login route and protect existing routes
 
 ### Integration & Testing
 
-- [ ] T030 [US1] Configure authentication middleware for protected routes in cmd/server/main.go
-- [ ] T031 [US1] Test complete login flow: unauthenticated redirect → login → authenticated access
-- [ ] T032 [US1] Verify JWT token creation, cookie storage, and automatic authentication on page refresh
+- [x] T030 [US1] Configure authentication middleware for protected routes in cmd/server/main.go
+- [x] T031 [US1] Test complete login flow: unauthenticated redirect → login → authenticated access
+- [x] T032 [US1] Verify JWT token creation, cookie storage, and automatic authentication on page refresh
 
 ## Phase 4: US2 - Role-Based Access Control (P2)
 
