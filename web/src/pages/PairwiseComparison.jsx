@@ -332,18 +332,16 @@ const PairwiseComparison = () => {
   // Navigation functions
   const navigateToNext = () => {
     if (!currentComparison || comparisons.length === 0) return
-    
-    const currentIndex = comparisons.findIndex(c => c.id === currentComparison.id)
+    const currentIndex = comparisons.findIndex(c => (c.comparison?.id ?? c.id) === currentComparison.id)
     const nextIndex = (currentIndex + 1) % comparisons.length
-    setCurrentComparison(comparisons[nextIndex])
+    setCurrentComparison(normalizeApiComparison(comparisons[nextIndex]))
   }
 
   const navigateToPrevious = () => {
     if (!currentComparison || comparisons.length === 0) return
-    
-    const currentIndex = comparisons.findIndex(c => c.id === currentComparison.id)
-    const prevIndex = currentIndex === 0 ? comparisons.length - 1 : currentIndex - 1
-    setCurrentComparison(comparisons[prevIndex])
+    const currentIndex = comparisons.findIndex(c => (c.comparison?.id ?? c.id) === currentComparison.id)
+    const prevIndex = currentIndex <= 0 ? comparisons.length - 1 : currentIndex - 1
+    setCurrentComparison(normalizeApiComparison(comparisons[prevIndex]))
   }
 
   // Vote handling
