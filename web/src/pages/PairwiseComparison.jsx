@@ -102,6 +102,25 @@ const PairwiseComparison = () => {
   const [loginDialogOpen, setLoginDialogOpen] = useState(false)
   const { user, isAuthenticated } = useAuth()
 
+  // Normalize API ComparisonWithVotes to the flat format ComparisonCard expects
+  const normalizeApiComparison = (c) => {
+    if (!c) return c
+    if (c.comparison) {
+      // API format: { comparison: SessionComparison, votes: AttendeeVote[] | null }
+      return {
+        id: c.comparison.id,
+        featureA: c.comparison.feature_a,
+        featureB: c.comparison.feature_b,
+        votes: c.votes ?? [],
+        hasConsensus: c.comparison.consensus_reached || false,
+        feature_a_id: c.comparison.feature_a_id,
+        feature_b_id: c.comparison.feature_b_id,
+      }
+    }
+    // Already flat (locally generated or previously normalized)
+    return { ...c, votes: c.votes ?? [] }
+  }
+
   // Auto-select attendee that matches the JWT user, or prompt selection
   useEffect(() => {
     if (!attendees || attendees.length === 0 || currentAttendee) return
@@ -192,11 +211,12 @@ const PairwiseComparison = () => {
         
         if (comparisonsData && comparisonsData.comparisons) {
           setComparisons(comparisonsData.comparisons)
-          
-          // Set initial comparison if none selected
+
+          // Set initial comparison if none selected — normalize to flat format for ComparisonCard
           if (!currentComparison && comparisonsData.comparisons.length > 0) {
-            const firstIncomplete = comparisonsData.comparisons.find(c => !c.consensus_reached)
-            setCurrentComparison(firstIncomplete || comparisonsData.comparisons[0])
+            const firstIncomplete = comparisonsData.comparisons.find(c => !c.comparison?.consensus_reached)
+            const seed = firstIncomplete || comparisonsData.comparisons[0]
+            setCurrentComparison(normalizeApiComparison(seed))
           }
         } else {
           console.log('No comparisons found, using fallback generation')
@@ -356,11 +376,13 @@ const PairwiseComparison = () => {
       // Auto-advance to next comparison if enabled
       if (autoAdvance && !currentComparison?.hasConsensus) {
         setTimeout(() => {
-          const nextIncomplete = comparisons.find(c => 
-            c.id !== comparisonId && !c.hasConsensus
-          )
+          const nextIncomplete = comparisons.find(c => {
+            const cId = c.comparison?.id ?? c.id
+            const cDone = c.comparison?.consensus_reached ?? c.hasConsensus ?? false
+            return cId !== comparisonId && !cDone
+          })
           if (nextIncomplete) {
-            setCurrentComparison(nextIncomplete)
+            setCurrentComparison(normalizeApiComparison(nextIncomplete))
           }
         }, 1000)
       }

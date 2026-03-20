@@ -27,7 +27,8 @@ const ComparisonCard = ({
   showDetails = false,
 }) => {
   const [expanded, setExpanded] = useState(false)
-  const { featureA, featureB, votes = [], status = 'pending', criterion } = comparison
+  const { featureA, featureB, votes: rawVotes, status = 'pending', criterion } = comparison
+  const votes = rawVotes ?? []
 
   // Calculate vote statistics
   const totalAttendees = comparison.totalAttendees || 0
