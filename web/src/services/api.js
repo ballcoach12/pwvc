@@ -9,10 +9,10 @@ class APIClient {
       this.baseURL = import.meta.env.VITE_API_URL
     } else if (import.meta.env.DEV) {
       // In development, use the Vite proxy
-      this.baseURL = '/api'
+      this.baseURL = '/api/v1'
     } else {
       // In production, assume API is on the same host
-      this.baseURL = `${window.location.protocol}//${window.location.host}/api`
+      this.baseURL = `${window.location.protocol}//${window.location.host}/api/v1`
     }
     
     this.defaultTimeout = 30000
@@ -381,32 +381,21 @@ export const api = {
 
   // Authentication (JWT-based system)
   auth: {
-    login: (credentials) => apiClient.post('/v1/auth/login', {
+    login: (credentials) => apiClient.post('/auth/login', {
       username: credentials.username,
       password: credentials.password
     }, { skipRetry: true }),
-    logout: () => apiClient.post('/v1/auth/logout', null, { skipRetry: true }),
-    getCurrentUser: () => apiClient.get('/v1/auth/me', { skipRetry: true }),
+    logout: () => apiClient.post('/auth/logout', null, { skipRetry: true }),
+    getCurrentUser: () => apiClient.get('/auth/me', { skipRetry: true }),
   },
 
   // Admin endpoints (require admin role)
   admin: {
-    getUsers: (params = {}) => apiClient.get('/admin/users', { 
-      credentials: 'include',
-      params 
-    }),
-    createUser: (userData) => apiClient.post('/admin/users', userData, { 
-      credentials: 'include' 
-    }),
-    getUser: (userId) => apiClient.get(`/admin/users/${userId}`, { 
-      credentials: 'include' 
-    }),
-    updateUser: (userId, userData) => apiClient.put(`/admin/users/${userId}`, userData, { 
-      credentials: 'include' 
-    }),
-    getRoles: () => apiClient.get('/admin/roles', { 
-      credentials: 'include' 
-    })
+    getUsers: (params = {}) => apiClient.get('/admin/users', { params }),
+    createUser: (userData) => apiClient.post('/admin/users', userData),
+    getUser: (userId) => apiClient.get(`/admin/users/${userId}`),
+    updateUser: (userId, userData) => apiClient.put(`/admin/users/${userId}`, userData),
+    getRoles: () => apiClient.get('/admin/roles')
   }
 }
 

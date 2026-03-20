@@ -168,7 +168,7 @@ const FeatureManagement = () => {
       enqueueSnackbar('Please add at least 2 features before continuing', { variant: 'warning' })
       return
     }
-    navigate(`/projects/${id}/comparison`)
+    navigate(`/projects/${id}/pairwise`)
   }
 
   const cancelEdit = () => {
@@ -287,7 +287,7 @@ const FeatureManagement = () => {
                           primary={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Typography variant="subtitle1">
-                                {feature.name}
+                                {feature.title || feature.name}
                               </Typography>
                               <Chip
                                 label={`#${index + 1}`}
@@ -354,7 +354,7 @@ const FeatureManagement = () => {
         <DialogTitle>Delete Feature</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete "{deleteDialog.feature?.name}"? 
+            Are you sure you want to delete "{deleteDialog.feature?.title || deleteDialog.feature?.name}"? 
             This will also remove any existing pairwise comparisons involving this feature.
             <br /><br />
             <strong>This action cannot be undone.</strong>

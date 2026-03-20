@@ -35,6 +35,7 @@ import {
 } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import AttendeeLoginDialog from '../components/AttendeeLoginDialog/AttendeeLoginDialog'
 import AttendeeVotingPanel from '../components/AttendeeVotingPanel/AttendeeVotingPanel'
 import ComparisonCard from '../components/ComparisonCard/ComparisonCard'
@@ -65,7 +66,7 @@ import pairwiseWebSocketService, { useWebSocket } from '../services/websocketSer
  */
 const PairwiseComparison = () => {
   // Router hooks
-  const { projectId } = useParams()
+  const { id: projectId } = useParams()
   const navigate = useNavigate()
   
   // State management
@@ -99,48 +100,31 @@ const PairwiseComparison = () => {
 
   // Authentication state
   const [loginDialogOpen, setLoginDialogOpen] = useState(false)
+  const { user, isAuthenticated } = useAuth()
 
-  // Debug logging for attendee selection
+  // Auto-select attendee that matches the JWT user, or prompt selection
   useEffect(() => {
-    console.log('Current attendee state:', currentAttendee)
-    console.log('Available attendees:', attendees)
-  }, [currentAttendee, attendees])
+    if (!attendees || attendees.length === 0 || currentAttendee) return
 
-  // Check for authenticated attendee on mount
-  useEffect(() => {
-    const authenticatedAttendee = api.auth.getCurrentAttendee()
-    if (authenticatedAttendee) {
-      console.log('Found authenticated attendee:', authenticatedAttendee)
-      setCurrentAttendee(authenticatedAttendee)
+    const matchedAttendee = attendees.find(a =>
+      a.name?.toLowerCase() === user?.username?.toLowerCase() ||
+      a.name?.toLowerCase() === user?.name?.toLowerCase()
+    )
+
+    if (matchedAttendee) {
+      setCurrentAttendee(matchedAttendee)
     } else {
-      // Show login dialog if attendees are available but none is authenticated
-      if (attendees && attendees.length > 0 && !currentAttendee) {
-        console.log('No authenticated attendee, showing login dialog')
-        setLoginDialogOpen(true)
-      }
+      setLoginDialogOpen(true)
     }
-  }, [attendees, currentAttendee])
+  }, [attendees, user])
 
-  // Handle attendee login
-  const handleAttendeeLogin = async (attendeeId, pin) => {
-    try {
-      const response = await api.auth.login(projectId, attendeeId, pin)
-      console.log('Login successful:', response)
-      
-      // Store authentication
-      api.auth.setCurrentAttendee(response.attendee, response.token)
-      setCurrentAttendee(response.attendee)
+  // Handle attendee selection (PIN no longer needed — JWT handles auth)
+  const handleAttendeeLogin = async (attendeeId) => {
+    const selected = attendees?.find(a => a.id === attendeeId || a.id === parseInt(attendeeId))
+    if (selected) {
+      setCurrentAttendee(selected)
       setLoginDialogOpen(false)
-      
-      // If there's a selected comparison, switch to detail view
-      if (currentComparison && viewMode === 'grid') {
-        setViewMode('detail')
-      }
-      
-      showNotification(`Welcome, ${response.attendee.name}!`, 'success')
-    } catch (error) {
-      console.error('Login failed:', error)
-      throw error // Re-throw for the dialog to handle
+      showNotification(`Voting as ${selected.name}`, 'success')
     }
   }
 
@@ -595,7 +579,7 @@ const PairwiseComparison = () => {
                 currentComparison={currentComparison}
                 onComparisonSelect={(comparison) => {
                   // Check authentication before switching to detail view
-                  if (!api.auth.isAuthenticated() || !currentAttendee) {
+                  if (!isAuthenticated() || !currentAttendee) {
                     setCurrentComparison(comparison)
                     setLoginDialogOpen(true)
                   } else {
@@ -609,7 +593,7 @@ const PairwiseComparison = () => {
           ) : (
             <>
               <Grid item xs={12} md={6}>
-                {currentComparison && currentAttendee && api.auth.isAuthenticated() && (
+                {currentComparison && currentAttendee && isAuthenticated() && (
                   <ComparisonCard
                     comparison={currentComparison}
                     votes={currentComparison.votes}
@@ -622,11 +606,11 @@ const PairwiseComparison = () => {
                         choice,
                         currentAttendee,
                         hasCurrentAttendee: !!currentAttendee,
-                        isAuthenticated: api.auth.isAuthenticated()
+                        isAuthenticated: isAuthenticated()
                       })
                       
                       // Verify authentication
-                      if (!api.auth.isAuthenticated()) {
+                      if (!isAuthenticated()) {
                         console.error('Not authenticated - showing login dialog')
                         setLoginDialogOpen(true)
                         return
@@ -643,7 +627,7 @@ const PairwiseComparison = () => {
                 )}
                 
                 {/* Show authentication prompt if not authenticated */}
-                {currentComparison && (!currentAttendee || !api.auth.isAuthenticated()) && (
+                {currentComparison && (!currentAttendee || !isAuthenticated()) && (
                   <Card sx={{ p: 3, textAlign: 'center' }}>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
@@ -666,7 +650,7 @@ const PairwiseComparison = () => {
 
               {/* Right Panel - Voting */}
               <Grid item xs={12} md={3}>
-                {currentComparison && currentAttendee && api.auth.isAuthenticated() && (
+                {currentComparison && currentAttendee && isAuthenticated() && (
                   <AttendeeVotingPanel
                     comparison={currentComparison}
                     attendee={currentAttendee}

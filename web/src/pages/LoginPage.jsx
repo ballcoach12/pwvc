@@ -22,7 +22,8 @@ const LoginPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated: isAuthFn, loading } = useAuth();
+  const isAuthenticated = isAuthFn();
   const [loginError, setLoginError] = useState(null);
   const [showForm, setShowForm] = useState(false);
 

@@ -176,7 +176,7 @@ const resultsService = {
 
 const Results = () => {
   const theme = useTheme()
-  const { projectId } = useParams()
+  const { id: projectId } = useParams()
   const navigate = useNavigate()
   const { project, loading: projectLoading } = useProject(projectId)
   

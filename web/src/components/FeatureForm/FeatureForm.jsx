@@ -54,9 +54,9 @@ const FeatureForm = ({ onSubmit, onCancel, initialData = null, isLoading = false
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -66,7 +66,13 @@ const FeatureForm = ({ onSubmit, onCancel, initialData = null, isLoading = false
       description: formData.description?.trim() || '',
     }
 
-    onSubmit(cleanedData)
+    await onSubmit(cleanedData)
+
+    // Reset form for next entry (only when adding, not editing)
+    if (!initialData?.id) {
+      setFormData({ name: '', description: '' })
+      setErrors({})
+    }
   }
 
   const handleReset = () => {

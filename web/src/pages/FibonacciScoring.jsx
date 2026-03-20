@@ -54,7 +54,8 @@ import { useWebSocket } from '../services/websocketService'
  * - Mobile-friendly responsive design
  */
 const FibonacciScoring = () => {
-  const { projectId, criterionType = 'value' } = useParams()
+  const { id: projectId } = useParams()
+  const criterionType = 'value'
   const navigate = useNavigate()
   const location = useLocation()
   

@@ -61,11 +61,17 @@ export const projectService = {
     }
   },
 
-  // Add attendee to project
+  // Add attendee to project (no PIN required upfront — invite flow)
   async addAttendee(projectId, attendeeData) {
     try {
-      const response = await api.post(`/projects/${projectId}/attendees`, attendeeData)
-      return handleApiResponse(response)
+      const payload = {
+        name: attendeeData.name,
+        role: attendeeData.role,
+        is_facilitator: attendeeData.isFacilitator ?? attendeeData.is_facilitator ?? false,
+      }
+      const response = await api.post(`/projects/${projectId}/attendees/invite`, payload)
+      const data = handleApiResponse(response)
+      return data.attendee ?? data
     } catch (error) {
       handleApiError(error)
     }
