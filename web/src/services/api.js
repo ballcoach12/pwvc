@@ -454,37 +454,14 @@ export const pairwiseService = {
       handleApiError(error)
     }
   },
-  submitVote: async (projectId, comparisonId, attendeeId, choice) => {
+  submitVote: async (projectId, comparisonId, attendeeId, preferredFeatureId, isTieVote) => {
     try {
-      // Convert choice to the API format
-      let preferredFeatureId = null
-      let isTieVote = false
-      
-      if (choice === 'tie' || choice === 'neutral') {
-        isTieVote = true
-      } else if (choice === 'A') {
-        // Get feature A ID from current comparison - we'll need to fetch it
-        const comparisons = await api.pairwise.getComparisons(projectId)
-        const comparison = comparisons.data.comparisons.find(c => c.comparison.id === comparisonId)
-        if (comparison) {
-          preferredFeatureId = comparison.comparison.feature_a_id
-        }
-      } else if (choice === 'B') {
-        // Get feature B ID from current comparison
-        const comparisons = await api.pairwise.getComparisons(projectId)
-        const comparison = comparisons.data.comparisons.find(c => c.comparison.id === comparisonId)
-        if (comparison) {
-          preferredFeatureId = comparison.comparison.feature_b_id
-        }
-      }
-      
       const data = {
         comparison_id: comparisonId,
         attendee_id: attendeeId,
-        preferred_feature_id: preferredFeatureId,
-        is_tie_vote: isTieVote
+        preferred_feature_id: preferredFeatureId ?? null,
+        is_tie_vote: isTieVote ?? false,
       }
-      
       const response = await api.pairwise.submitVote(projectId, data)
       return handleApiResponse(response)
     } catch (error) {

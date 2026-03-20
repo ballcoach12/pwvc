@@ -319,6 +319,26 @@ const PairwiseComparison = () => {
   // Vote handling
   const handleVote = async (comparisonId, choice, attendeeId) => {
     try {
+      // Resolve preferred feature ID from the current comparison
+      // Supports both API-loaded ({ comparison: { feature_a_id, feature_b_id } })
+      // and locally-generated ({ featureA: { id }, featureB: { id } }) structures
+      let preferredFeatureId = null
+      let isTieVote = false
+
+      if (choice === 'tie' || choice === 'neutral') {
+        isTieVote = true
+      } else if (choice === 'A') {
+        preferredFeatureId = currentComparison?.comparison?.feature_a_id
+          ?? currentComparison?.feature_a_id
+          ?? currentComparison?.featureA?.id
+          ?? null
+      } else if (choice === 'B') {
+        preferredFeatureId = currentComparison?.comparison?.feature_b_id
+          ?? currentComparison?.feature_b_id
+          ?? currentComparison?.featureB?.id
+          ?? null
+      }
+
       // Try to send vote via WebSocket for real-time updates (optional)
       try {
         sendVote(comparisonId, choice, attendeeId)
@@ -326,9 +346,9 @@ const PairwiseComparison = () => {
       } catch (wsError) {
         console.warn('WebSocket vote failed, continuing with API call:', wsError.message)
       }
-      
+
       // Always persist to backend API (required)
-      await pairwiseService.submitVote(projectId, comparisonId, attendeeId, choice)
+      await pairwiseService.submitVote(projectId, comparisonId, attendeeId, preferredFeatureId, isTieVote)
       console.log('API vote submitted successfully')
       
       showNotification('Vote submitted successfully', 'success')
