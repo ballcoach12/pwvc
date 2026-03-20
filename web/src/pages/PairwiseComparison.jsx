@@ -107,14 +107,24 @@ const PairwiseComparison = () => {
     if (!c) return c
     if (c.comparison) {
       // API format: { comparison: SessionComparison, votes: AttendeeVote[] | null }
+      const featureAId = c.comparison.feature_a_id
+      const featureBId = c.comparison.feature_b_id
+      const featureA = c.comparison.feature_a
+      const featureB = c.comparison.feature_b
+      // Normalize votes from API snake_case + preferred_feature_id to ComparisonCard camelCase + choice
+      const normalizedVotes = (c.votes ?? []).map(v => ({
+        attendeeId: v.attendee_id,
+        attendeeName: v.attendee?.name || `Attendee ${v.attendee_id}`,
+        choice: v.is_tie_vote ? 'tie' : (v.preferred_feature_id === featureAId ? 'A' : 'B'),
+      }))
       return {
         id: c.comparison.id,
-        featureA: c.comparison.feature_a,
-        featureB: c.comparison.feature_b,
-        votes: c.votes ?? [],
+        featureA: featureA ? { ...featureA, name: featureA.name || featureA.title } : featureA,
+        featureB: featureB ? { ...featureB, name: featureB.name || featureB.title } : featureB,
+        votes: normalizedVotes,
         hasConsensus: c.comparison.consensus_reached || false,
-        feature_a_id: c.comparison.feature_a_id,
-        feature_b_id: c.comparison.feature_b_id,
+        feature_a_id: featureAId,
+        feature_b_id: featureBId,
       }
     }
     // Already flat (locally generated or previously normalized)
@@ -370,7 +380,22 @@ const PairwiseComparison = () => {
       // Always persist to backend API (required)
       await pairwiseService.submitVote(projectId, comparisonId, attendeeId, preferredFeatureId, isTieVote)
       console.log('API vote submitted successfully')
-      
+
+      // Optimistically update currentComparison votes so ComparisonCard reflects the vote
+      setCurrentComparison(prev => {
+        if (!prev || prev.id !== comparisonId) return prev
+        const alreadyVoted = (prev.votes || []).some(v => v.attendeeId === attendeeId)
+        if (alreadyVoted) return prev
+        return {
+          ...prev,
+          votes: [...(prev.votes || []), {
+            attendeeId,
+            attendeeName: currentAttendee?.name || '',
+            choice,
+          }],
+        }
+      })
+
       showNotification('Vote submitted successfully', 'success')
       
       // Auto-advance to next comparison if enabled
@@ -496,7 +521,7 @@ const PairwiseComparison = () => {
   const currentIndex = currentComparison ? 
     comparisons.findIndex(c => c.id === currentComparison.id) : 0
   const totalComparisons = comparisons.length
-  const completedComparisons = comparisons.filter(c => c.hasConsensus).length
+  const completedComparisons = comparisons.filter(c => c.comparison?.consensus_reached ?? c.hasConsensus).length
 
   return (
     <Box 
